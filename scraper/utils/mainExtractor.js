@@ -43,16 +43,12 @@ class MainExtractor {
   }
   
   /**
-   * Ensures compatibility with different Puppeteer versions
+   * Ensure compatibility with different Puppeteer versions
    */
   ensureCompatibility() {
-    // Check if waitForTimeout is not available (older Puppeteer versions)
+    // Add waitForTimeout if it doesn't exist
     if (!this.page.waitForTimeout) {
-      console.log('💡 Added waitForTimeout compatibility');
-      // Add waitForTimeout as a custom method
-      this.page.waitForTimeout = (ms) => {
-        return new Promise(resolve => setTimeout(resolve, ms));
-      };
+      this.page.waitForTimeout = (ms) => new Promise(resolve => setTimeout(resolve, ms));
     }
 
     // Check for waitForFunction compatibility
@@ -108,200 +104,107 @@ class MainExtractor {
    */
   async extract() {
     try {
-      // Get the current URL from the page
-      this.data.url = await this.page.url();
+      let newContent = [];
       
-      // Get the page title
-      this.data.title = await this.page.title();
+      // Extract title if not already set
+      if (!this.data.title) {
+        this.data.title = await this.extractTitle();
+      }
       
       // Try all extraction methods
-      console.log('🔄 Trying all extraction methods');
-      const allContent = [];
-      
-      // Try extracting from recipe structure
-      console.log('🍲 Trying recipe extraction');
-      const recipeContent = await this.extractFromRecipe();
-      if (recipeContent && recipeContent.length > 0) {
-        allContent.push(...recipeContent);
+      const recipesContent = await this.extractFromRecipes();
+      if (recipesContent && recipesContent.length > 0) {
+        newContent.push(...recipesContent);
       }
       
-      // Try extracting from article elements
-      console.log('📰 Trying article extraction');
       const articleContent = await this.extractFromArticle();
       if (articleContent && articleContent.length > 0) {
-        allContent.push(...articleContent);
+        newContent.push(...articleContent);
       }
       
-      // Try extracting from main content
-      console.log('📄 Trying main content extraction');
       const mainContent = await this.extractFromMainContent();
       if (mainContent && mainContent.length > 0) {
-        allContent.push(...mainContent);
+        newContent.push(...mainContent);
       }
       
-      // Try extracting from semantic content
-      console.log('🧠 Trying semantic content extraction');
-      const semanticContent = await this.extractFromSemanticContent();
+      const semanticContent = await this.extractFromSemantic();
       if (semanticContent && semanticContent.length > 0) {
-        allContent.push(...semanticContent);
+        newContent.push(...semanticContent);
       }
       
-      // Try extracting from header-content-footer
-      console.log('📑 Trying header-content-footer extraction');
-      const headerContentFooterContent = await this.extractFromHeaderContentFooter();
-      if (headerContentFooterContent && headerContentFooterContent.length > 0) {
-        allContent.push(...headerContentFooterContent);
+      const headerContentFooter = await this.extractFromHeaderContentFooter();
+      if (headerContentFooter && headerContentFooter.length > 0) {
+        newContent.push(...headerContentFooter);
       }
       
-      // Try extracting from multi-column
-      console.log('📏 Trying multi-column extraction');
       const multiColumnContent = await this.extractFromMultiColumn();
       if (multiColumnContent && multiColumnContent.length > 0) {
-        allContent.push(...multiColumnContent);
+        newContent.push(...multiColumnContent);
       }
       
-      // Try extracting from content sections
-      console.log('📋 Trying content sections extraction');
-      const contentSectionsContent = await this.extractFromContentSections();
-      if (contentSectionsContent && contentSectionsContent.length > 0) {
-        allContent.push(...contentSectionsContent);
+      const contentSections = await this.extractFromContentSections();
+      if (contentSections && contentSections.length > 0) {
+        newContent.push(...contentSections);
       }
       
-      // Try extracting from single column
-      console.log('📊 Trying single column extraction');
       const singleColumnContent = await this.extractFromSingleColumn();
       if (singleColumnContent && singleColumnContent.length > 0) {
-        allContent.push(...singleColumnContent);
+        newContent.push(...singleColumnContent);
       }
       
-      // Try extracting from largest content
-      console.log('📈 Trying largest content extraction');
-      const largestContent = await this.extractFromLargestContent();
+      const largestContent = await this.extractFromLargest();
       if (largestContent && largestContent.length > 0) {
-        allContent.push(...largestContent);
+        newContent.push(...largestContent);
       }
       
-      // Try extracting from product pages
-      console.log('🛒 Trying product extraction');
-      const productContent = await this.extractFromProduct();
-      if (productContent && productContent.length > 0) {
-        allContent.push(...productContent);
-      }
+      // Add any content in this extraction that wasn't already present
+      const existingContentSet = new Set(this.data.content.map(item => item.trim()));
+      const uniqueNewContent = newContent.filter(item => 
+        item && 
+        item.length > 20 && 
+        !existingContentSet.has(item.trim())
+      );
       
-      // Try extracting from documentation pages
-      console.log('📚 Trying documentation extraction');
-      const docContent = await this.extractFromDocumentation();
-      if (docContent && docContent.length > 0) {
-        allContent.push(...docContent);
-      }
+      // Add unique new content to existing content
+      this.data.content = [
+        ...this.data.content,
+        ...uniqueNewContent.map(item => item.trim())
+      ];
       
-      // Try extracting using text density analysis
-      console.log('📊 Trying text density extraction');
-      const textDensityContent = await this.extractFromTextDensity();
-      if (textDensityContent && textDensityContent.length > 0) {
-        allContent.push(...textDensityContent);
-      }
-      
-      // Try to extract all text from selectors
-      console.log('📝 Trying basic selector extraction');
-      const basicContent = await this.extractFromBasic();
-      if (basicContent && basicContent.length > 0) {
-        allContent.push(...basicContent);
-      }
-      
-      // Handle pagination to get more content
-      console.log('📄 Handling pagination');
-      try {
-        await this.attemptPagination();
-      } catch (error) {
-        console.error('Error handling pagination:', error);
-      }
-      
-      // Extract metadata
-      await this.extractMetadata();
-      
-      // Combine and deduplicate content
-      const seen = new Set();
-      this.data.content = allContent.filter(item => {
-        // Skip empty items or very short items
-        if (!item || item.length < 5) return false;
-        
-        // Normalize for comparison
-        const normalized = item.trim().toLowerCase();
-        
-        // Skip if we've seen this item before
-        if (seen.has(normalized)) return false;
-        
-        // Mark as seen and keep this item
-        seen.add(normalized);
-        return true;
-      });
-      
-      console.log(`✅ Extracted ${this.data.content.length} unique content items`);
       return this.data;
     } catch (error) {
-      console.error('Error in MainExtractor:', error);
       return this.data;
     }
   }
 
   /**
-   * Attempts all pagination approaches
+   * Attempts all pagination approaches silently
    */
   async attemptPagination() {
     try {
-      console.log('📄 Handling pagination - trying all approaches');
-      
-      // Store initial content length to check if we've added anything
       const initialContentLength = this.data.content ? this.data.content.length : 0;
       
-      // First try infinite scroll
-      console.log('🔄 Trying infinite scroll pagination');
+      // Try infinite scroll
       await this.handleInfiniteScroll(3);
       
-      // Then try click-based pagination
-      console.log('🔄 Trying click pagination');
-      // Try common pagination selectors
+      // Try click-based pagination with common selectors
       const paginationSelectors = [
-        '.pagination a', 
-        '.pager a', 
-        '.page-numbers', 
-        '[aria-label*="page"]', 
-        '[aria-label*="Page"]', 
-        '.pages a',
-        'a.next',
-        'button.next',
-        '[rel="next"]',
-        '.load-more',
-        '.show-more',
-        '.view-more',
-        '.next-page',
-        'button:contains("Load More")',
-        'button:contains("Show More")',
-        'button:contains("Next")',
-        '.more'
+        '.pagination a', '.pager a', '.page-numbers', 
+        '[aria-label*="page"]', '[aria-label*="Page"]', '.pages a',
+        'a.next', 'button.next', '[rel="next"]', '.load-more',
+        '.show-more', '.view-more', '.next-page', '.more'
       ];
       
       for (const selector of paginationSelectors) {
         await this.handleClickPagination(selector, 2);
       }
       
-      // Then try URL-based pagination
-      console.log('🔄 Trying URL pagination');
+      // Try URL-based pagination
       await this.handleUrlPagination(null, 2);
       
-      // Check if we've added any content
-      const newContentItems = this.data.content ? 
-        this.data.content.length - initialContentLength : 0;
-      
-      if (newContentItems > 0) {
-        console.log(`✅ Added ${newContentItems} new content items from pagination`);
-        return true;
-      }
-      
-      return false;
+      return this.data.content ? 
+        this.data.content.length - initialContentLength > 0 : false;
     } catch (error) {
-      console.error('Error handling pagination:', error);
       return false;
     }
   }
@@ -488,7 +391,7 @@ class MainExtractor {
    * Extracts content from the largest content block on the page
    * This is a fallback method when other methods fail
    */
-  async extractFromLargestContent() {
+  async extractFromLargest() {
     try {
       const content = await this.page.evaluate(() => {
         const results = [];
@@ -555,7 +458,7 @@ class MainExtractor {
    * Extracts content from elements with semantic meaning
    * Looks for elements with semantic roles or schema.org attributes
    */
-  async extractFromSemanticContent() {
+  async extractFromSemantic() {
     try {
       const semanticContent = await this.page.evaluate(() => {
         const results = [];
@@ -647,7 +550,7 @@ class MainExtractor {
   /**
    * Extract content from recipe pages
    */
-  async extractFromRecipe() {
+  async extractFromRecipes() {
     try {
       const recipeData = await this.page.evaluate(() => {
         const content = [];
@@ -2312,6 +2215,27 @@ class MainExtractor {
     } catch (error) {
       console.error('Error handling URL pagination:', error);
       return false;
+    }
+  }
+
+  /**
+   * Extract the page title using various methods
+   */
+  async extractTitle() {
+    try {
+      const title = await this.page.evaluate(() => {
+        // Try different ways to get the title
+        return document.querySelector('h1')?.textContent?.trim() ||
+               document.title?.trim() ||
+               document.querySelector('meta[property="og:title"]')?.content?.trim() ||
+               document.querySelector('meta[name="twitter:title"]')?.content?.trim() ||
+               '';
+      });
+      
+      return title;
+    } catch (error) {
+      console.error('Error extracting title:', error);
+      return '';
     }
   }
 }

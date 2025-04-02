@@ -1,81 +1,101 @@
-// resourceBlocker.js - Performance optimization through resource blocking
-
 /**
- * Common resource types to block for better performance
+ * Resource blocker for improved performance
+ * 
+ * Blocks various resources to reduce load times and network traffic
  */
-const defaultBlockedResourceTypes = [
-    'beacon',
-    'csp_report',
-    'font',
-    'imageset',
-    'media',
-    'object',
-    'texttrack',
+
+// Resource types that can be blocked
+const RESOURCE_TYPES = [
+  'image',
+  'stylesheet',
+  'font',
+  'media',
+  'beacon',
+  'prefetch',
+  'ping'
+];
+
+// Domains for analytics, ads, etc. to block
+const BLOCKED_DOMAINS = [
+  'google-analytics.com',
+  'googletagmanager.com',
+  'googlesyndication.com',
+  'analytics',
+  'doubleclick.net',
+  'facebook.net',
+  'facebook.com/tr',
+  'twitter.com/i/jot',
+  'linkedin.com/px',
+  'script.hotjar.com',
+  'static.hotjar.com',
+  'snap.licdn.com',
+  'connect.facebook.net',
+  'bat.bing.com',
+  'stats.g.doubleclick.net',
+  'vimeo.com'
 ];
 
 /**
- * Common resource domains to block for better performance and privacy
- */
-const defaultBlockedResourceDomains = [
-    'adition',
-    'adzerk',
-    'analytics',
-    'cdn.api.twitter',
-    'clicksor',
-    'clicktale',
-    'doubleclick',
-    'exelator',
-    'facebook',
-    'fontawesome',
-    'google-analytics',
-    'googletagmanager',
-    'mixpanel',
-    'optimizely',
-    'quantserve',
-    'zedo',
-];
-
-/**
- * Sets up request interception on a Puppeteer page for blocking unwanted resources
- * @param {import('puppeteer').Page} page - Puppeteer page instance
- * @param {Object} options - Configuration options
- * @param {string[]} [options.blockedResourceTypes] - Resource types to block
- * @param {string[]} [options.blockedResourceDomains] - Resource domains to block
- * @param {function} [options.customBlockHandler] - Custom function to handle request blocking
+ * Setup resource blocker on a page to improve performance
  */
 async function setupResourceBlocker(page, options = {}) {
-    const {
-        blockedResourceTypes = defaultBlockedResourceTypes,
-        blockedResourceDomains = defaultBlockedResourceDomains,
-        customBlockHandler = null,
-    } = options;
+  const {
+    blockResourceTypes = RESOURCE_TYPES,
+    blockedDomains = BLOCKED_DOMAINS,
+    blockCssAnimations = true,
+    enableWebSockets = false
+  } = options;
 
-    await page.setRequestInterception(true);
+  await page.setRequestInterception(true);
 
-    page.on('request', request => {
-        if (customBlockHandler) {
-            return customBlockHandler(request);
-        }
+  page.on('request', request => {
+    const url = request.url().toLowerCase();
+    const resourceType = request.resourceType();
 
-        const requestUrl = request.url().split('?')[0].toLowerCase();
-        const shouldBlock = 
-            blockedResourceTypes.includes(request.resourceType()) ||
-            blockedResourceDomains.some(domain => requestUrl.includes(domain));
+    // Allow essential operations
+    if (request.isNavigationRequest()) {
+      request.continue();
+      return;
+    }
 
-        if (shouldBlock) {
-            request.abort();
-        } else {
-            request.continue();
-        }
+    // Block by resource type
+    if (blockResourceTypes.includes(resourceType)) {
+      request.abort();
+      return;
+    }
+
+    // Block by domain
+    if (blockedDomains.some(domain => url.includes(domain))) {
+      request.abort();
+      return;
+    }
+
+    // Let the request through
+    request.continue();
+  });
+
+  // Disable CSS animations if requested
+  if (blockCssAnimations) {
+    await page.addStyleTag({
+      content: '* { animation: none !important; transition: none !important; }'
     });
-
-    console.log('Resource blocker configured with:');
-    console.log(`- ${blockedResourceTypes.length} blocked resource types`);
-    console.log(`- ${blockedResourceDomains.length} blocked domains`);
+  }
+  
+  // Disable web sockets if requested
+  if (!enableWebSockets) {
+    await page.evaluateOnNewDocument(() => {
+      // Override WebSocket constructor to disable it
+      window.WebSocket = class FakeWebSocket {
+        constructor() {
+          throw new Error('WebSockets disabled');
+        }
+      };
+    });
+  }
 }
 
 module.exports = {
-    setupResourceBlocker,
-    defaultBlockedResourceTypes,
-    defaultBlockedResourceDomains,
+  setupResourceBlocker,
+  RESOURCE_TYPES,
+  BLOCKED_DOMAINS
 };

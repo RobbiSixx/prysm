@@ -45,10 +45,31 @@ async function createJob(url, options = {}, priority = 5, webhook = null) {
   const jobId = generateJobId();
   const now = new Date();
   
+  // Default values for options
+  const defaultOptions = {
+    maxScrolls: 5,
+    scrollDelay: 2000,
+    bypassCloudflare: true,
+    handlePagination: true,
+    headless: true,
+    pages: 1, // Default to single page
+    followLinks: false,
+    linkSelector: 'a',
+    sameDomainOnly: true
+  };
+  
+  // Merge with provided options
+  const mergedOptions = { ...defaultOptions, ...options };
+  
+  // If pages > 1, automatically enable followLinks
+  if (mergedOptions.pages > 1 && !('followLinks' in options)) {
+    mergedOptions.followLinks = true;
+  }
+  
   const job = {
     jobId,
     url,
-    options,
+    options: mergedOptions,
     priority,
     webhook,
     status: JobStatus.PENDING,

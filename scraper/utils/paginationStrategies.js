@@ -8,8 +8,8 @@ const { sleep, waitForSelector, safeClick, isElementVisible } = require('./helpe
 class PaginationStrategy {
     constructor(page, options = {}) {
         this.page = page;
-        this.maxAttempts = options.maxAttempts || 20;
-        this.delay = options.delay || 2000;
+        this.maxAttempts = options.maxAttempts;
+        this.delay = options.delay;
     }
 
     async paginate() {
@@ -25,72 +25,322 @@ class InfiniteScrollStrategy extends PaginationStrategy {
         super(page, options);
         this.scrollContainerSelector = options.scrollContainerSelector;
         this.minHeightChange = options.minHeightChange || 10;
-        this.batchScrolls = options.batchScrolls || 3;
-        this.scrollBatchDelay = options.scrollBatchDelay || 300;
     }
 
     async paginate() {
-        console.log(`Starting infinite scroll strategy (max attempts: ${this.maxAttempts})...`);
-        let scrollCount = 0;
-        let previousHeight = await this.getScrollHeight();
+        // Try all scroll strategies in sequence
+        await this.standardScroll();
+        await this.chunkScroll();
+        await this.reverseScroll();
+        await this.pulseScroll();
+        await this.zigzagScroll();
+        await this.stepScroll();
+        await this.bounceScroll();
+        await this.hoverScroll();
+        await this.randomScroll();
+        await this.cornerScroll();
+        await this.diagonalScroll();
+        await this.spiralScroll();
+        await this.swipeScroll();
+        await this.resizeScroll();
+        // Final pass to ensure we got everything
+        await this.standardScroll();
+    }
 
-        while (scrollCount < this.maxAttempts) {
-            console.log(`Scroll attempt ${scrollCount + 1}/${this.maxAttempts}`);
+    async standardScroll() {
+        let lastHeight = await this.getScrollHeight();
+        let attempts = 0;
+        let noChangeCount = 0;
+        
+        while (attempts < this.maxAttempts && noChangeCount < 3) {
+            await this.scrollToBottom();
+            await this.page.waitForTimeout(this.delay);
             
-            // Perform batch scrolls
-            for (let i = 0; i < this.batchScrolls; i++) {
-                await this.performScroll();
-                await sleep(this.scrollBatchDelay);
-            }
-
-            // Wait for network idle
-            try {
-                await this.page.waitForNetworkIdle({ 
-                    idleTime: 500, 
-                    timeout: 5000 
-                });
-            } catch (error) {
-                console.warn('Network did not become idle, continuing...');
-            }
-
-            // Check if we've reached the end
             const newHeight = await this.getScrollHeight();
-            if (newHeight === 0 || newHeight <= previousHeight + this.minHeightChange) {
-                console.log('No significant height change detected, ending scroll.');
-                break;
+            
+            if (newHeight === lastHeight) {
+                noChangeCount++;
+            } else {
+                noChangeCount = 0;
             }
-
-            previousHeight = newHeight;
-            scrollCount++;
-            await sleep(this.delay);
+            
+            lastHeight = newHeight;
+            attempts++;
+            
+            await this.page.evaluate(() => {
+                window.dispatchEvent(new Event('scroll'));
+            });
         }
+    }
 
-        console.log(`Infinite scroll completed after ${scrollCount} attempts`);
-        return scrollCount;
+    async chunkScroll() {
+        const totalHeight = await this.getScrollHeight();
+        const chunkSize = Math.floor(totalHeight / 10);
+        let currentPosition = 0;
+        
+        while (currentPosition < totalHeight) {
+            await this.scrollToPosition(currentPosition);
+            await this.page.waitForTimeout(this.delay / 2);
+            currentPosition += chunkSize;
+        }
+        
+        await this.scrollToBottom();
+    }
+
+    async reverseScroll() {
+        await this.scrollToBottom();
+        await this.page.waitForTimeout(this.delay);
+        
+        const totalHeight = await this.getScrollHeight();
+        const chunkSize = Math.floor(totalHeight / 10);
+        let currentPosition = totalHeight;
+        
+        while (currentPosition > 0) {
+            await this.scrollToPosition(currentPosition);
+            await this.page.waitForTimeout(this.delay / 2);
+            currentPosition -= chunkSize;
+        }
+        
+        await this.scrollToBottom();
+    }
+
+    async pulseScroll() {
+        let lastHeight = await this.getScrollHeight();
+        let attempts = 0;
+        
+        while (attempts < this.maxAttempts) {
+            await this.scrollToBottom();
+            await this.page.waitForTimeout(this.delay / 2);
+            
+            const currentHeight = await this.getScrollHeight();
+            await this.scrollToPosition(currentHeight * 0.9);
+            await this.page.waitForTimeout(this.delay / 2);
+            
+            const newHeight = await this.getScrollHeight();
+            if (newHeight <= lastHeight) break;
+            
+            lastHeight = newHeight;
+            attempts++;
+        }
+    }
+
+    async zigzagScroll() {
+        const totalHeight = await this.getScrollHeight();
+        const steps = 20;
+        const stepSize = totalHeight / steps;
+        
+        for (let i = 0; i < steps; i++) {
+            const position = i * stepSize;
+            await this.scrollToPosition(position);
+            await this.page.waitForTimeout(this.delay / 4);
+            
+            // Zigzag left and right
+            await this.page.evaluate(() => {
+                window.scrollBy(-50, 0);
+                window.scrollBy(50, 0);
+            });
+        }
+        await this.scrollToBottom();
+    }
+
+    async stepScroll() {
+        const totalHeight = await this.getScrollHeight();
+        let position = 0;
+        
+        // Get viewport height properly
+        const viewportHeight = await this.page.evaluate(() => window.innerHeight);
+        const smallStep = Math.floor(viewportHeight / 2);
+        
+        while (position < totalHeight) {
+            await this.scrollToPosition(position);
+            await this.page.waitForTimeout(this.delay / 3);
+            position += smallStep;
+        }
+        await this.scrollToBottom();
+    }
+
+    async bounceScroll() {
+        let attempts = 0;
+        while (attempts < this.maxAttempts) {
+            // Scroll to bottom quickly
+            await this.scrollToBottom();
+            await this.page.waitForTimeout(this.delay / 2);
+            
+            // Bounce back to top
+            await this.scrollToPosition(0);
+            await this.page.waitForTimeout(this.delay / 2);
+            
+            attempts++;
+        }
+        await this.scrollToBottom();
+    }
+
+    async hoverScroll() {
+        await this.page.evaluate(() => {
+            const elements = document.querySelectorAll('*');
+            elements.forEach(el => {
+                const event = new MouseEvent('mouseover', {
+                    bubbles: true,
+                    cancelable: true
+                });
+                el.dispatchEvent(event);
+            });
+        });
+        await this.scrollToBottom();
+    }
+
+    async randomScroll() {
+        const totalHeight = await this.getScrollHeight();
+        let attempts = 0;
+        
+        while (attempts < this.maxAttempts) {
+            const randomPosition = Math.floor(Math.random() * totalHeight);
+            await this.scrollToPosition(randomPosition);
+            await this.page.waitForTimeout(this.delay / 2);
+            attempts++;
+        }
+        await this.scrollToBottom();
+    }
+
+    async cornerScroll() {
+        await this.page.evaluate(() => {
+            // Scroll to each corner of the viewport
+            const viewportWidth = window.innerWidth;
+            const positions = [
+                [0, 0],
+                [viewportWidth, 0],
+                [0, document.documentElement.scrollHeight],
+                [viewportWidth, document.documentElement.scrollHeight]
+            ];
+            
+            positions.forEach(([x, y]) => {
+                window.scrollTo(x, y);
+            });
+        });
+        await this.scrollToBottom();
+    }
+
+    async diagonalScroll() {
+        const totalHeight = await this.getScrollHeight();
+        const viewportWidth = await this.page.evaluate(() => window.innerWidth);
+        const steps = 20;
+        
+        // Scroll diagonally across the page
+        for (let i = 0; i < steps; i++) {
+            const yPos = (totalHeight / steps) * i;
+            const xPos = (viewportWidth / steps) * i;
+            
+            await this.page.evaluate((x, y) => {
+                window.scrollTo(x, y);
+            }, xPos, yPos);
+            
+            await this.page.waitForTimeout(this.delay / 4);
+        }
+        
+        await this.scrollToBottom();
+    }
+    
+    async spiralScroll() {
+        const totalHeight = await this.getScrollHeight();
+        const viewportWidth = await this.page.evaluate(() => window.innerWidth);
+        const centerX = viewportWidth / 2;
+        const centerY = totalHeight / 2;
+        const maxRadius = Math.min(centerX, centerY);
+        const steps = 36; // 10-degree steps
+        
+        // Scroll in a spiral pattern
+        for (let radius = 0; radius < maxRadius; radius += maxRadius / 10) {
+            for (let angle = 0; angle < 360; angle += 360 / steps) {
+                const xPos = centerX + radius * Math.cos(angle * Math.PI / 180);
+                const yPos = centerY + radius * Math.sin(angle * Math.PI / 180);
+                
+                await this.page.evaluate((x, y) => {
+                    window.scrollTo(x, y);
+                }, xPos, yPos);
+                
+                await this.page.waitForTimeout(this.delay / 10);
+            }
+        }
+        
+        await this.scrollToBottom();
+    }
+    
+    async swipeScroll() {
+        // Use keyboard-based scrolling instead of touch events
+        const totalHeight = await this.getScrollHeight();
+        const viewportHeight = await this.page.evaluate(() => window.innerHeight);
+        const steps = Math.ceil(totalHeight / viewportHeight);
+        
+        for (let i = 0; i < steps; i++) {
+            await this.page.keyboard.press('PageDown');
+            await this.page.waitForTimeout(this.delay / 3);
+        }
+        
+        await this.scrollToBottom();
+    }
+    
+    async resizeScroll() {
+        // Get original viewport size
+        const originalViewportSize = await this.page.viewport();
+        
+        // Try different viewport sizes
+        const viewportSizes = [
+            { width: 1280, height: 800 },
+            { width: 768, height: 1024 },
+            { width: 414, height: 896 },
+            { width: 1920, height: 1080 }
+        ];
+        
+        for (const size of viewportSizes) {
+            await this.page.setViewport(size);
+            await this.page.waitForTimeout(this.delay / 2);
+            await this.scrollToBottom();
+            await this.page.waitForTimeout(this.delay / 2);
+        }
+        
+        // Restore original viewport
+        await this.page.setViewport(originalViewportSize);
+        await this.scrollToBottom();
     }
 
     async getScrollHeight() {
-        try {
+        if (this.scrollContainerSelector) {
             return await this.page.evaluate((selector) => {
-                const element = selector ? document.querySelector(selector) : document.body;
-                return element ? element.scrollHeight : 0;
+                const container = document.querySelector(selector);
+                return container ? container.scrollHeight : document.documentElement.scrollHeight;
             }, this.scrollContainerSelector);
-        } catch (error) {
-            console.warn(`Error getting scroll height: ${error.message}`);
-            return 0;
+        }
+        return await this.page.evaluate(() => document.documentElement.scrollHeight);
+    }
+
+    async scrollToPosition(position) {
+        if (this.scrollContainerSelector) {
+            await this.page.evaluate((selector, pos) => {
+                const container = document.querySelector(selector);
+                if (container) {
+                    container.scrollTo(0, pos);
+                }
+            }, this.scrollContainerSelector, position);
+        } else {
+            await this.page.evaluate((pos) => {
+                window.scrollTo(0, pos);
+            }, position);
         }
     }
 
-    async performScroll() {
-        await this.page.evaluate((selector) => {
-            const scrollElement = selector ? document.querySelector(selector) : window;
-            const scrollAmount = window.innerHeight;
-            if (scrollElement === window) {
-                window.scrollBy(0, scrollAmount);
-            } else {
-                scrollElement.scrollBy(0, scrollAmount);
-            }
-        }, this.scrollContainerSelector);
+    async scrollToBottom() {
+        if (this.scrollContainerSelector) {
+            await this.page.evaluate((selector) => {
+                const container = document.querySelector(selector);
+                if (container) {
+                    container.scrollTo(0, container.scrollHeight);
+                }
+            }, this.scrollContainerSelector);
+        } else {
+            await this.page.evaluate(() => {
+                window.scrollTo(0, document.documentElement.scrollHeight);
+            });
+        }
     }
 }
 
@@ -107,36 +357,39 @@ class ClickPaginationStrategy extends PaginationStrategy {
     }
 
     async paginate() {
-        console.log(`Starting click-based pagination (max attempts: ${this.maxAttempts})...`);
-        let clickCount = 0;
-
-        while (clickCount < this.maxAttempts) {
-            console.log(`Click attempt ${clickCount + 1}/${this.maxAttempts}`);
-            
-            // Check if button exists and is visible
-            const buttonVisible = await isElementVisible(this.page, this.buttonSelector);
+        let attempts = 0;
+        
+        while (attempts < this.maxAttempts) {
+            const buttonVisible = await this.isButtonVisible();
             if (!buttonVisible) {
-                console.log('Pagination button not visible, ending pagination');
                 break;
             }
-
-            // Attempt to click the button
-            const clicked = await safeClick(this.page, this.buttonSelector, {
-                retries: 3,
-                delay: 1000
-            });
-
-            if (!clicked) {
-                console.log('Failed to click pagination button, ending pagination');
-                break;
-            }
-
-            clickCount++;
-            await sleep(this.delay);
+            
+            await this.clickButton();
+            await this.page.waitForTimeout(this.delay);
+            attempts++;
         }
+    }
 
-        console.log(`Click-based pagination completed after ${clickCount} clicks`);
-        return clickCount;
+    async isButtonVisible() {
+        return await this.page.evaluate((selector) => {
+            const button = document.querySelector(selector);
+            if (!button) return false;
+            
+            const style = window.getComputedStyle(button);
+            return button.offsetParent !== null && 
+                   style.display !== 'none' && 
+                   style.visibility !== 'hidden';
+        }, this.buttonSelector);
+    }
+
+    async clickButton() {
+        await this.page.evaluate((selector) => {
+            const button = document.querySelector(selector);
+            if (button) {
+                button.click();
+            }
+        }, this.buttonSelector);
     }
 }
 
@@ -156,41 +409,25 @@ class URLPaginationStrategy extends PaginationStrategy {
     }
 
     async paginate() {
-        console.log(`Starting URL-based pagination (max attempts: ${this.maxAttempts})...`);
-        let pageCount = 1;
-
-        while (pageCount <= this.maxAttempts) {
-            const url = this.urlPattern
-                .replace('[PAGE]', pageCount)
-                .replace('[BASE]', this.baseUrl);
-
-            console.log(`Navigating to page ${pageCount}: ${url}`);
-            
-            try {
-                await this.page.goto(url, { 
-                    waitUntil: 'networkidle0',
-                    timeout: 30000 
-                });
-
-                // Check if content exists
-                if (this.contentSelector) {
-                    const hasContent = await waitForSelector(this.page, this.contentSelector);
-                    if (!hasContent) {
-                        console.log('No content found on page, ending pagination');
-                        break;
-                    }
-                }
-
-                pageCount++;
-                await sleep(this.delay);
-            } catch (error) {
-                console.warn(`Failed to load page ${pageCount}: ${error.message}`);
+        let attempts = 0;
+        
+        while (attempts < this.maxAttempts) {
+            const nextUrl = await this.findNextUrl();
+            if (!nextUrl) {
                 break;
             }
+            
+            await this.page.goto(nextUrl, { waitUntil: 'networkidle0' });
+            await this.page.waitForTimeout(this.delay);
+            attempts++;
         }
+    }
 
-        console.log(`URL-based pagination completed after ${pageCount - 1} pages`);
-        return pageCount - 1;
+    async findNextUrl() {
+        return await this.page.evaluate(() => {
+            const nextLink = document.querySelector('a[rel="next"], .next a, .pagination .next a');
+            return nextLink ? nextLink.href : null;
+        });
     }
 }
 

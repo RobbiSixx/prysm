@@ -66,6 +66,24 @@ components:
           type: string
           description: CSS selector for click-based pagination
           nullable: true
+        pages:
+          type: integer
+          description: Maximum number of pages to scrape by following links
+          default: 1
+          minimum: 1
+          maximum: 100
+        followLinks:
+          type: boolean
+          description: Whether to follow links to scrape multiple pages
+          default: false
+        linkSelector:
+          type: string
+          description: CSS selector for links to follow when using multi-page scraping
+          default: "a"
+        sameDomainOnly:
+          type: boolean
+          description: Whether to only follow links on the same domain
+          default: true
     
     JobRequest:
       type: object

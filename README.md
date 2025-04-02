@@ -37,26 +37,36 @@ The CLI provides a simple interface to run the scraper. Prysm automatically dete
 
 ```bash
 # Scrape any URL
-npm run start:cli "https://example.com/page-to-scrape"
+npm run start:cli "https://example.com"
 
 # Scrape with custom options
-npm run start:cli "https://example.com/page-to-scrape" \
+npm run start:cli "https://example.com" \
   --maxScrolls 10 \
   --scrollDelay 2000 \
   --bypassCloudflare \
   --handlePagination
+
+# Scrape multiple pages by following links (defaults to same domain)
+npm run start:cli "https://example.com" --pages 5
+
+# Scrape with custom link selector (useful for specific content types)
+npm run start:cli "https://example.com" --pages 3 --linkSelector ".article-link"
 
 # Run test suite (includes various test sites)
 npm run start:cli test
 ```
 
 ### CLI Options
+- `--pages <number>` - Maximum number of pages to scrape (default: 1)
+- `--linkSelector <selector>` - CSS selector for links to follow when using --pages
+- `--allDomains` - Follow links to any domain (default: same domain only)
 - `--maxScrolls <number>` - Maximum scroll attempts (default: 5)
 - `--scrollDelay <ms>` - Delay between scrolls in ms (default: 2000)
 - `--bypassCloudflare` - Enable Cloudflare bypass (default: true)
 - `--handlePagination` - Auto-handle pagination (default: true)
 - `--paginationStrategy <strategy>` - Force pagination strategy (infinite/click/url)
 - `--headless` - Run in headless mode (default: true)
+- `--noHeadless` - Run with browser visible
 - `--output <path>` - Custom output path for results
 
 Prysm will automatically:
@@ -65,6 +75,7 @@ Prysm will automatically:
 - Handle pagination if present
 - Bypass anti-bot protections when needed
 - Block unnecessary resources for faster scraping
+- Follow links to additional pages when --pages > 1
 
 ## 🌐 REST API
 
