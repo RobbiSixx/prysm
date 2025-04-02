@@ -1,6 +1,6 @@
 {
-  "name": "prysm-scraper",
-  "version": "1.0.0",
+  "name": "@pinkpixel/prysm-scraper",
+  "version": "1.2.0",
   "description": "Structure-aware web scraping tool with REST API support",
   "main": "main_scraper.js",
   "scripts": {

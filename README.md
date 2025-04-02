@@ -2,6 +2,9 @@
 
 # 🔍 Prysm – Structure-Aware Web Scraper for Anything on the Internet
 
+[![npm version](https://img.shields.io/npm/v/@pinkpixel/prysm-scraper.svg)](https://www.npmjs.com/package/@pinkpixel/prysm-scraper)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Prysm is a blazing-smart Puppeteer-based web scraper that doesn't just extract — it *understands* structure. From recipes and documentation to ecommerce listings and blogs, Prysm dynamically adapts to the page and gets what matters — fast.
 
 ---
@@ -12,6 +15,7 @@ Prysm is a blazing-smart Puppeteer-based web scraper that doesn't just extract �
 - 🕵️‍♂️ **Cloudflare Bypass**: Defeats the orange wall with stealth plugins and anti-bot evasion.
 - 🚫 **Resource Blocking**: Faster scrapes with image/script/fonts tracking turned off.
 - 🔄 **Smart Pagination**: Scroll, click, or URL pattern — handled automatically or manually.
+- 📸 **Image Extraction**: Scrape images with contextual information and optional local downloading.
 - 🛠 **Pluggable & Modular**: Add your own extractors, pagination styles, or content processors in seconds.
 - 🌐 **REST API**: OpenAPI-powered REST interface for remote control and integration.
 
@@ -20,7 +24,13 @@ Prysm is a blazing-smart Puppeteer-based web scraper that doesn't just extract �
 ## 🚀 Quick Start
 
 ```bash
-# Install dependencies
+# Install from npm
+npm install @pinkpixel/prysm-scraper
+
+# Update to the latest version
+npm install @pinkpixel/prysm-scraper@latest
+
+# Or install dependencies locally
 npm install
 
 # Run scraper on example URL
@@ -50,6 +60,12 @@ npm run start:cli "https://example.com" --pages 5
 
 # Scrape with custom link selector (useful for specific content types)
 npm run start:cli "https://example.com" --pages 3 --linkSelector ".article-link"
+
+# Scrape images from a page
+npm run start:cli "https://example.com" --scrapeImages
+
+# Scrape and download images
+npm run start:cli "https://example.com" --downloadImages --maxImages 50 --minImageSize 200
 ```
 
 ### CLI Options
@@ -65,6 +81,10 @@ npm run start:cli "https://example.com" --pages 3 --linkSelector ".article-link"
 - `--headless` - Run in headless mode (default: true)
 - `--noHeadless` - Run with browser visible
 - `--output <path>` - Custom output path for results
+- `--scrapeImages` - Enable image scraping (default: false)
+- `--downloadImages` - Download images locally (enables scrapeImages)
+- `--maxImages <number>` - Maximum images to extract per page (default: 100)
+- `--minImageSize <pixels>` - Minimum width/height for images (default: 100)
 
 Prysm will automatically:
 
@@ -241,3 +261,40 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ---
 
 ✨ Dream it, Pixel it | Made with ❤️ by Pink Pixel
+
+---
+
+## 📥 Installation
+
+### NPM Installation
+
+```bash
+# Install the latest version
+npm install @pinkpixel/prysm-scraper
+
+# Install a specific version
+npm install @pinkpixel/prysm-scraper@1.2.0
+
+# Update to the latest version
+npm install @pinkpixel/prysm-scraper@latest
+```
+
+For projects, you can add it to your package.json with:
+
+```json
+"dependencies": {
+  "@pinkpixel/prysm-scraper": "^1.2.0"
+}
+```
+
+The `^` symbol allows npm to update to compatible minor and patch versions automatically.
+
+### Local Development
+
+```bash
+git clone https://github.com/pinkpixel-dev/prysm.git
+cd prysm/scraper
+npm install
+```
+
+---

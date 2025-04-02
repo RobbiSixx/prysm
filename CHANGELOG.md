@@ -2,6 +2,27 @@
 
 All notable changes to the Prysm scraper will be documented in this file.
 
+## [1.2.0] - 2024-04-03
+
+### Added
+
+- 📸 Added image scraping functionality
+- 📥 Added image downloading capability
+- 🗃️ Images are now included in the JSON output
+- 🔧 New CLI options for controlling image scraping:
+  - `--scrapeImages`: Enable image extraction
+  - `--downloadImages`: Download images locally
+  - `--maxImages`: Control maximum images extracted
+  - `--minImageSize`: Filter out images smaller than specified size
+
+## [1.0.1] - 2024-04-03
+
+### Added
+
+- 📦 Published package to npm under @pinkpixel organization
+- 🏷️ Added npm version and license badges to README
+- 📄 Added .npmignore file to exclude development files from the package
+
 ## [1.1.0] - 2024-04-02
 
 ### Added

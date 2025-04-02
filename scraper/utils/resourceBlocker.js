@@ -6,13 +6,17 @@
 
 // Resource types that can be blocked
 const RESOURCE_TYPES = [
-  'image',
   'stylesheet',
   'font',
   'media',
   'beacon',
   'prefetch',
   'ping'
+];
+
+// Resource types that can be conditionally blocked
+const CONDITIONAL_RESOURCE_TYPES = [
+  'image' // Images can be conditionally blocked based on scrapeImages option
 ];
 
 // Domains for analytics, ads, etc. to block
@@ -41,10 +45,20 @@ const BLOCKED_DOMAINS = [
 async function setupResourceBlocker(page, options = {}) {
   const {
     blockResourceTypes = RESOURCE_TYPES,
+    conditionalResourceTypes = CONDITIONAL_RESOURCE_TYPES,
     blockedDomains = BLOCKED_DOMAINS,
     blockCssAnimations = true,
-    enableWebSockets = false
+    enableWebSockets = false,
+    scrapeImages = false // New option to control image blocking
   } = options;
+
+  // Combine resource types to block based on options
+  const typesToBlock = [...blockResourceTypes];
+  
+  // Only block images if not scraping them
+  if (!scrapeImages && conditionalResourceTypes.includes('image')) {
+    typesToBlock.push('image');
+  }
 
   await page.setRequestInterception(true);
 
@@ -59,7 +73,7 @@ async function setupResourceBlocker(page, options = {}) {
     }
 
     // Block by resource type
-    if (blockResourceTypes.includes(resourceType)) {
+    if (typesToBlock.includes(resourceType)) {
       request.abort();
       return;
     }
@@ -97,5 +111,6 @@ async function setupResourceBlocker(page, options = {}) {
 module.exports = {
   setupResourceBlocker,
   RESOURCE_TYPES,
+  CONDITIONAL_RESOURCE_TYPES,
   BLOCKED_DOMAINS
 };

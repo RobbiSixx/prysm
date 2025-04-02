@@ -6,6 +6,7 @@ const { InfiniteScrollStrategy, ClickPaginationStrategy, URLPaginationStrategy }
 const { MainExtractor } = require('./utils/mainExtractor');
 const { sleep, waitForSelector } = require('./utils/helpers');
 const cloudflareBypass = require('./utils/cloudflareBypass');
+const { extractImages, downloadImage } = require('./utils/imageExtractor');
 const fs = require('fs').promises;
 const path = require('path');
 const { URL } = require('url');
@@ -28,7 +29,12 @@ function parseArguments(args) {
     pages: 1, // Default to 1 page (single page scrape)
     followLinks: false, // By default, don't follow links
     linkSelector: 'a', // Default link selector
-    sameDomainOnly: true // Only follow links on the same domain
+    sameDomainOnly: true, // Only follow links on the same domain
+    scrapeImages: false, // Whether to scrape images
+    downloadImages: false, // Whether to download images
+    maxImages: 100, // Maximum number of images to extract per page
+    minImageSize: 100, // Minimum size for images in pixels
+    imageOutputDir: null // Will be set dynamically based on output path
   };
 
   let url = null;
@@ -96,6 +102,25 @@ function parseArguments(args) {
         case '--allDomains':
           options.sameDomainOnly = false;
           break;
+        case '--scrapeImages':
+          options.scrapeImages = true;
+          break;
+        case '--noScrapeImages':
+          options.scrapeImages = false;
+          options.downloadImages = false; // Can't download if not scraping
+          break;
+        case '--downloadImages':
+          options.downloadImages = true;
+          options.scrapeImages = true; // Must scrape to download
+          break;
+        case '--maxImages':
+          options.maxImages = parseInt(value, 10);
+          i++;
+          break;
+        case '--minImageSize':
+          options.minImageSize = parseInt(value, 10);
+          i++;
+          break;
         case '--help':
           showHelp();
           process.exit(0);
@@ -133,12 +158,18 @@ Options:
   --headless              Run in headless mode (default: true)
   --noHeadless            Run with browser visible
   --output <path>         Custom output path for results
+  --scrapeImages          Enable image scraping (default: false)
+  --noScrapeImages        Disable image scraping
+  --downloadImages        Download images locally (enables scrapeImages)
+  --maxImages <number>    Maximum images to extract per page (default: 100)
+  --minImageSize <pixels> Minimum width/height for images (default: 100)
   --help                  Show this help message
 
 Examples:
   npm run start:cli "https://example.com"
   npm run start:cli "https://example.com" --pages 5
   npm run start:cli "https://example.com" --maxScrolls 50 --noHeadless
+  npm run start:cli "https://example.com" --scrapeImages --downloadImages
 `);
 }
 
@@ -215,6 +246,8 @@ async function mainScraper(url, options = {}) {
  * Scrape a single page
  */
 async function singlePageScrape(url, options = {}) {
+  const startTime = Date.now();
+  
   const {
     maxScrolls,
     scrollDelay,
@@ -265,7 +298,9 @@ async function singlePageScrape(url, options = {}) {
     await page.setDefaultNavigationTimeout(90000);
 
     if (useResourceBlocker) {
-      await setupResourceBlocker(page);
+      await setupResourceBlocker(page, {
+        scrapeImages: options.scrapeImages
+      });
     }
 
     await sleep(2000);
@@ -317,11 +352,88 @@ async function singlePageScrape(url, options = {}) {
     clearInterval(progressInterval);
     process.stdout.write('\n\n');
     
-    return {
+    const result = {
       title: extractor.data.title,
       content: extractor.data.content,
+      images: extractor.data.images,
       url: extractor.data.url
     };
+
+    // Process images if scraping is enabled
+    if (options.scrapeImages && result.images && result.images.length > 0) {
+      console.log(`📸 Found ${result.images.length} images`);
+      
+      // Download images if the option is enabled
+      if (options.downloadImages) {
+        const safeHostname = new URL(url).hostname.replace(/[^a-zA-Z0-9]/g, '_');
+        const timestamp = new Date().toISOString().replace(/:/g, '-');
+        const imageDir = path.join(options.output, `${safeHostname}_images_${timestamp}`);
+        
+        console.log(`📥 Downloading images to ${imageDir}`);
+        
+        // Download images in parallel with a concurrency limit
+        const concurrencyLimit = 5;
+        const chunks = [];
+        
+        // Split images into chunks for parallel download
+        for (let i = 0; i < result.images.length; i += concurrencyLimit) {
+          chunks.push(result.images.slice(i, i + concurrencyLimit));
+        }
+        
+        let downloadedCount = 0;
+        let failedCount = 0;
+        
+        // Process chunks sequentially to control concurrency
+        for (const chunk of chunks) {
+          // Process each chunk in parallel
+          const downloadPromises = chunk.map(async (image, index) => {
+            try {
+              const imagePath = await downloadImage(image.url, imageDir);
+              if (imagePath) {
+                // Add local path to the image object
+                image.localPath = imagePath.replace(options.output, '').replace(/^\//, '');
+                downloadedCount++;
+                process.stdout.write('.');
+              } else {
+                failedCount++;
+                process.stdout.write('x');
+              }
+            } catch (error) {
+              failedCount++;
+              process.stdout.write('x');
+            }
+          });
+          
+          // Wait for all downloads in this chunk to complete
+          await Promise.all(downloadPromises);
+        }
+        
+        console.log(`\n✅ Downloaded ${downloadedCount} images (${failedCount} failed)`);
+      }
+    }
+
+    // Save results to file
+    const safeHostname = new URL(url).hostname.replace(/[^a-zA-Z0-9]/g, '_');
+    const timestamp = new Date().toISOString().replace(/:/g, '-');
+    const outputFile = path.join(options.output, `${safeHostname}_${timestamp}.json`);
+    
+    // Create the output directory if it doesn't exist
+    await fs.mkdir(options.output, { recursive: true });
+    
+    await fs.writeFile(outputFile, JSON.stringify({
+      url,
+      title: result.title,
+      timestamp: new Date().toISOString(),
+      content: result.content,
+      images: result.images || [], // Include images in the output
+      stats: {
+        contentItems: result.content.length,
+        imageCount: result.images ? result.images.length : 0, // Add image count
+        extractionTime: Math.round((Date.now() - startTime) / 1000)
+      }
+    }, null, 2));
+
+    return result;
 
   } catch (error) {
     // Clear the progress indicator if there's an error
@@ -585,6 +697,7 @@ if (require.main === module) {
           console.log(`=====================================`);
           console.log(`📄 Title: ${result.title}`);
           console.log(`📝 Content Items: ${result.content.length}`);
+          console.log(`📸 Images: ${result.images.length}`);
           console.log(`\n💾 Results saved to:`);
           console.log(outputFile);
           console.log(`=====================================`);
@@ -605,4 +718,9 @@ if (require.main === module) {
     });
 }
 
-module.exports = mainScraper; 
+module.exports = {
+  scrape: mainScraper,
+  scrapeMultiple: multiPageScrape,
+  extractImages,
+  downloadImage
+}; 

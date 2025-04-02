@@ -35,6 +35,7 @@ class MainExtractor {
       url: '',
       title: '',
       content: [],
+      images: [],
       metadata: {}
     };
     
@@ -155,6 +156,11 @@ class MainExtractor {
       const largestContent = await this.extractFromLargest();
       if (largestContent && largestContent.length > 0) {
         newContent.push(...largestContent);
+      }
+      
+      // Attempt to extract images if not already done
+      if (this.data.images.length === 0) {
+        await this.extractImages();
       }
       
       // Add any content in this extraction that wasn't already present
@@ -2236,6 +2242,127 @@ class MainExtractor {
     } catch (error) {
       console.error('Error extracting title:', error);
       return '';
+    }
+  }
+
+  /**
+   * Extract images from the page
+   */
+  async extractImages() {
+    try {
+      // Extract all img elements
+      const images = await this.page.evaluate(() => {
+        // Helper to generate an absolute URL
+        const toAbsoluteUrl = (relativeUrl) => {
+          try {
+            return new URL(relativeUrl, window.location.href).href;
+          } catch (e) {
+            return relativeUrl;
+          }
+        };
+
+        // Find content areas with images
+        const contentAreas = [
+          'article',
+          'main',
+          '[role="main"]',
+          '#content',
+          '.content',
+          '[class*="content"]',
+          'section',
+          '.post',
+          '.entry',
+          '.blog-post',
+          '[class*="article"]',
+          'figure',
+          '.gallery',
+          '[class*="gallery"]',
+          '[data-component-type="image-gallery"]',
+          '.product-images'
+        ];
+        
+        // First try to get images from main content areas
+        let imgElements = [];
+        for (const selector of contentAreas) {
+          try {
+            const container = document.querySelector(selector);
+            if (container) {
+              const containerImgs = Array.from(container.querySelectorAll('img'));
+              if (containerImgs.length > 0) {
+                imgElements = [...imgElements, ...containerImgs];
+              }
+            }
+          } catch (e) {
+            // Continue to next selector
+          }
+        }
+        
+        // If no images found in content areas, get all images
+        if (imgElements.length === 0) {
+          imgElements = Array.from(document.querySelectorAll('img'));
+        }
+        
+        // Filter out small images (likely icons) and tracking pixels
+        imgElements = imgElements.filter(img => {
+          // Skip images without src
+          if (!img.src) return false;
+          
+          // Skip tiny images (likely icons or tracking pixels)
+          if (img.width < 100 || img.height < 100) return false;
+          
+          // Skip tracking pixels
+          const trackingPatterns = ['pixel', 'tracker', 'tracking', 'analytics', 'beacon', '1x1'];
+          if (trackingPatterns.some(pattern => img.src.toLowerCase().includes(pattern))) {
+            return false;
+          }
+          
+          return true;
+        });
+        
+        // Extract image data
+        return imgElements.map(img => {
+          // Find closest caption if available
+          const closestFigure = img.closest('figure');
+          const captionElement = closestFigure ? 
+            closestFigure.querySelector('figcaption') : null;
+          
+          // Get parent container for context
+          const article = img.closest('article');
+          const section = img.closest('section');
+          const container = img.closest('[class*="content"], [class*="article"], [id*="content"], [id*="article"]');
+          
+          // Determine context
+          let context = 'unknown';
+          if (article) context = 'article';
+          else if (section) context = section.id || section.className || 'section';
+          else if (container) context = container.id || container.className || 'content';
+          
+          // Build image object
+          return {
+            url: toAbsoluteUrl(img.src),
+            alt: img.alt || '',
+            title: img.title || '',
+            width: img.width || 0,
+            height: img.height || 0,
+            caption: captionElement ? captionElement.textContent.trim() : '',
+            context: context.trim().replace(/\s+/g, ' ').substring(0, 100),
+            naturalWidth: img.naturalWidth || 0,
+            naturalHeight: img.naturalHeight || 0
+          };
+        });
+      });
+      
+      // Add unique images to the data
+      if (images && images.length > 0) {
+        const existingUrls = new Set(this.data.images.map(img => img.url));
+        const uniqueImages = images.filter(img => !existingUrls.has(img.url));
+        this.data.images = [...this.data.images, ...uniqueImages];
+      }
+      
+      return this.data.images;
+    } catch (error) {
+      console.warn(`Error extracting images: ${error.message}`);
+      return [];
     }
   }
 }

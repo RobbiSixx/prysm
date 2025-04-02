@@ -1,0 +1,29 @@
+# Development files
+node_modules/
+.venv/
+tests/
+*.test.js
+jest.config.js
+.git/
+.github/
+.gitignore
+
+# Results directories (unless needed by users)
+results/
+main_results/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment variables
+.env
+.env.*
+
+# IDE files
+.vscode/
+.idea/
+
+# Other
+*.gz
+.DS_Store 
