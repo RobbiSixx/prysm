@@ -5,6 +5,7 @@ All notable changes to the Prysm scraper will be documented in this file.
 ## [1.1.0] - 2024-04-02
 
 ### Added
+
 - 🔍 Integrated multi-page scraping directly into main CLI
 - ⚙️ Added `--pages` parameter to specify number of pages to scrape
 - 🔗 Added `--linkSelector` option for custom link selection
@@ -26,6 +27,7 @@ All notable changes to the Prysm scraper will be documented in this file.
   - Resize scroll (viewport resizing)
 
 ### Changed
+
 - 🔄 Optimized default scroll parameters (maxScrolls: 100, scrollDelay: 1000)
 - 📊 Simplified results output to focus on essential information
 - 🚀 Improved progress indication with dot-based progress bar
@@ -33,10 +35,12 @@ All notable changes to the Prysm scraper will be documented in this file.
 - 🧩 Restructured pagination handling to maximize content discovery
 
 ### Removed
+
 - 🗑️ Removed redundant multi_scrape.js script
 - 🔇 Removed verbose logging for cleaner output
 
 ### Fixed
+
 - 🐛 Fixed duplicate "Starting scraper" messages
 - 🔧 Fixed scroll strategy implementation for better dynamic content capture
 - 🧪 Fixed content deduplication to maintain unique items
@@ -44,6 +48,7 @@ All notable changes to the Prysm scraper will be documented in this file.
 ## [1.0.0] - 2024-03-15
 
 ### Added
+
 - 🌐 Initial release of Prysm web scraper
 - 🧠 Structure-aware content extraction
 - 🕵️‍♂️ Cloudflare bypass capability
@@ -53,4 +58,5 @@ All notable changes to the Prysm scraper will be documented in this file.
 - 📑 Basic CLI interface
 
 ### Fixed
+
 - Initial version - no fixes 

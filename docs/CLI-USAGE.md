@@ -60,6 +60,7 @@ npm run start:api
 This will start the API server, which automatically finds an available port (defaults to 3000 if available).
 
 Once running, you can access:
+
 - API at http://localhost:3001/api
 - Documentation at http://localhost:3001/api-docs
 
@@ -68,6 +69,7 @@ Once running, you can access:
 All scraping results are saved in the `results` folder inside the `scraper` directory.
 
 Each result is saved as a JSON file with:
+
 - Page title
 - Extracted content
 - Metadata

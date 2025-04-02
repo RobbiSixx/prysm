@@ -34,14 +34,14 @@ async function scrapeWebsite() {
       handlePagination: true,
       headless: true
     });
-    
+
     console.log(`Title: ${result.title}`);
     console.log(`Content items: ${result.content.length}`);
     console.log(`Structure type: ${result.structureType}`);
-    
+
     // Process the scraped data
     // ...
-    
+
     return result;
   } catch (error) {
     console.error('Scraping error:', error);
@@ -62,27 +62,27 @@ const path = require('path');
 function scrapeUrl(url, options = {}) {
   return new Promise((resolve, reject) => {
     const prysmPath = path.join(__dirname, 'path/to/prysm/scraper');
-    
+
     // Build command with options
     let cmd = `cd ${prysmPath} && npm run start:cli "${url}"`;
-    
+
     // Add options
     if (options.maxScrolls) cmd += ` --maxScrolls ${options.maxScrolls}`;
     if (options.noHeadless) cmd += ` --noHeadless`;
     if (options.output) cmd += ` --output "${options.output}"`;
-    
+
     // Execute the command
     exec(cmd, (error, stdout, stderr) => {
       if (error) {
         reject(error);
         return;
       }
-      
+
       // Parse the output to get the result file path
       const resultPathMatch = stdout.match(/Full results saved to:\s*([^\s]+)/);
       if (resultPathMatch && resultPathMatch[1]) {
         const resultPath = resultPathMatch[1];
-        
+
         // Load the results JSON file
         const results = require(resultPath);
         resolve(results);
@@ -113,16 +113,16 @@ class PrysmAPI {
     this.baseUrl = options.baseUrl || 'http://localhost:3001';
     this.apiProcess = null;
   }
-  
+
   async startServer() {
     return new Promise((resolve, reject) => {
       const prysmPath = path.join(__dirname, 'path/to/prysm/scraper');
-      
+
       this.apiProcess = spawn('npm', ['run', 'start:api'], {
         cwd: prysmPath,
         stdio: ['ignore', 'pipe', 'pipe']
       });
-      
+
       // Wait for server to start
       let output = '';
       this.apiProcess.stdout.on('data', (data) => {
@@ -135,25 +135,25 @@ class PrysmAPI {
           }
         }
       });
-      
+
       this.apiProcess.stderr.on('data', (data) => {
         reject(new Error(`Server error: ${data.toString()}`));
       });
-      
+
       // Timeout if server doesn't start
       setTimeout(() => {
         reject(new Error('API server failed to start within timeout'));
       }, 10000);
     });
   }
-  
+
   async stopServer() {
     if (this.apiProcess) {
       this.apiProcess.kill();
       this.apiProcess = null;
     }
   }
-  
+
   async createJob(url, options = {}) {
     const response = await axios.post(`${this.baseUrl}/api/jobs`, {
       url,
@@ -161,33 +161,33 @@ class PrysmAPI {
     });
     return response.data;
   }
-  
+
   async getJobStatus(jobId) {
     const response = await axios.get(`${this.baseUrl}/api/jobs/${jobId}`);
     return response.data;
   }
-  
+
   async getJobResults(jobId) {
     const response = await axios.get(`${this.baseUrl}/api/jobs/${jobId}/results`);
     return response.data.result;
   }
-  
+
   async pollUntilComplete(jobId, interval = 2000, timeout = 300000) {
     const startTime = Date.now();
-    
+
     while (Date.now() - startTime < timeout) {
       const status = await this.getJobStatus(jobId);
-      
+
       if (status.status === 'completed') {
         return await this.getJobResults(jobId);
       } else if (status.status === 'failed') {
         throw new Error(`Job failed: ${status.error}`);
       }
-      
+
       // Wait before checking again
       await new Promise(resolve => setTimeout(resolve, interval));
     }
-    
+
     throw new Error('Job timed out');
   }
 }
@@ -195,22 +195,22 @@ class PrysmAPI {
 // Usage
 async function scrapeWithAPI() {
   const prysm = new PrysmAPI();
-  
+
   try {
     await prysm.startServer();
     console.log('API server started');
-    
+
     const job = await prysm.createJob('https://example.com', {
       maxScrolls: 5,
       bypassCloudflare: true
     });
-    
+
     console.log(`Job created: ${job.jobId}`);
-    
+
     // Wait for job to complete
     const results = await prysm.pollUntilComplete(job.jobId);
     console.log('Scraping results:', results);
-    
+
     return results;
   } catch (error) {
     console.error('API error:', error);
@@ -242,14 +242,14 @@ const Article = mongoose.model('Article', {
 async function scrapeAndStore(url) {
   // Connect to MongoDB
   await mongoose.connect('mongodb://localhost:27017/scraped_content');
-  
+
   try {
     // Scrape the URL
     const result = await prysm(url, {
       maxScrolls: 10,
       bypassCloudflare: true
     });
-    
+
     // Create a new article
     const article = new Article({
       title: result.title,
@@ -258,11 +258,11 @@ async function scrapeAndStore(url) {
       scrapedAt: new Date(),
       structureType: result.structureType
     });
-    
+
     // Save to database
     await article.save();
     console.log(`Saved article: ${result.title}`);
-    
+
     return article;
   } catch (error) {
     console.error('Error:', error);
@@ -285,10 +285,10 @@ async function bulkScrape(urlList, outDir) {
   // Start API server (using the PrysmAPI class from previous example)
   const prysm = new PrysmAPI();
   await prysm.startServer();
-  
+
   try {
     await fs.mkdir(outDir, { recursive: true });
-    
+
     // Create jobs for all URLs
     const jobs = [];
     for (const url of urlList) {
@@ -300,27 +300,27 @@ async function bulkScrape(urlList, outDir) {
       jobs.push(job);
       console.log(`Created job ${job.jobId} for ${url}`);
     }
-    
+
     // Wait for all jobs to complete
     const results = [];
     for (const job of jobs) {
       try {
         const result = await prysm.pollUntilComplete(job.jobId);
         results.push({ url: job.url, data: result });
-        
+
         // Save to file
         const filename = new URL(job.url).hostname.replace(/[^a-z0-9]/g, '_');
         await fs.writeFile(
           `${outDir}/${filename}.json`,
           JSON.stringify(result, null, 2)
         );
-        
+
         console.log(`Completed: ${job.url}`);
       } catch (err) {
         console.error(`Failed to scrape ${job.url}:`, err.message);
       }
     }
-    
+
     return results;
   } finally {
     await prysm.stopServer();

@@ -20,6 +20,7 @@ npm run multi-scrape "https://example.com"
 ```
 
 This will:
+
 1. Scrape the initial URL
 2. Find links on the page
 3. Follow up to 5 links (default) on the same domain
@@ -30,52 +31,57 @@ This will:
 
 ### Core Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--pages <number>` | Maximum number of pages to scrape | 5 |
-| `--followLinks` | Enable link following | true |
-| `--noFollowLinks` | Disable link following | - |
-| `--linkSelector <selector>` | CSS selector for links to follow | 'a' |
-| `--allDomains` | Follow links to any domain | false (same domain only) |
+| Option                      | Description                       | Default                  |
+| --------------------------- | --------------------------------- | ------------------------ |
+| `--pages <number>`          | Maximum number of pages to scrape | 5                        |
+| `--followLinks`             | Enable link following             | true                     |
+| `--noFollowLinks`           | Disable link following            | -                        |
+| `--linkSelector <selector>` | CSS selector for links to follow  | 'a'                      |
+| `--allDomains`              | Follow links to any domain        | false (same domain only) |
 
 ### Scraping Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--maxScrolls <number>` | Maximum scroll attempts per page | 5 |
-| `--scrollDelay <ms>` | Delay between scrolls in ms | 2000 |
-| `--bypassCloudflare` | Enable Cloudflare bypass | true |
-| `--noBypassCloudflare` | Disable Cloudflare bypass | - |
-| `--handlePagination` | Enable auto pagination | true |
-| `--noHandlePagination` | Disable auto pagination | - |
-| `--paginationStrategy <strategy>` | Force pagination strategy (infinite/click/url) | null (auto) |
-| `--headless` | Run in headless mode | true |
-| `--noHeadless` | Run with browser visible | - |
-| `--output <path>` | Custom output path for results | ./results/multi |
+| Option                            | Description                                    | Default         |
+| --------------------------------- | ---------------------------------------------- | --------------- |
+| `--maxScrolls <number>`           | Maximum scroll attempts per page               | 5               |
+| `--scrollDelay <ms>`              | Delay between scrolls in ms                    | 2000            |
+| `--bypassCloudflare`              | Enable Cloudflare bypass                       | true            |
+| `--noBypassCloudflare`            | Disable Cloudflare bypass                      | -               |
+| `--handlePagination`              | Enable auto pagination                         | true            |
+| `--noHandlePagination`            | Disable auto pagination                        | -               |
+| `--paginationStrategy <strategy>` | Force pagination strategy (infinite/click/url) | null (auto)     |
+| `--headless`                      | Run in headless mode                           | true            |
+| `--noHeadless`                    | Run with browser visible                       | -               |
+| `--output <path>`                 | Custom output path for results                 | ./results/multi |
 
 ## Examples
 
 ### Scrape 10 Pages
+
 ```bash
 npm run multi-scrape "https://example.com" --pages 10
 ```
 
 ### Scrape Only Article Links
+
 ```bash
 npm run multi-scrape "https://example.com" --linkSelector ".article-link"
 ```
 
 ### Scrape Links Across Multiple Domains
+
 ```bash
 npm run multi-scrape "https://example.com" --allDomains
 ```
 
 ### Custom Output Location
+
 ```bash
 npm run multi-scrape "https://example.com" --output "./my-results/blog-scrape"
 ```
 
 ### Visible Browser (for debugging)
+
 ```bash
 npm run multi-scrape "https://example.com" --noHeadless
 ```
@@ -87,6 +93,7 @@ The multi-scrape feature creates two types of files:
 ### 1. Individual Page Results
 
 Each scraped page gets its own JSON file with:
+
 - URL
 - Scrape date and time
 - Full scraping results (title, content, metadata, etc.)
@@ -110,6 +117,7 @@ Each scraped page gets its own JSON file with:
 ### 2. Summary File
 
 A summary file that lists all scraped pages with basic info:
+
 - Starting URL
 - Number of pages scraped
 - Scrape date and time
@@ -180,10 +188,10 @@ async function scrapeWebsite() {
     maxScrolls: 5,
     output: './my-custom-output'
   };
-  
+
   const results = await multiScrape('https://example.com', options);
   console.log(`Scraped ${results.length} pages`);
-  
+
   // Process results
   for (const page of results) {
     console.log(`Page: ${page.url}`);

@@ -42,6 +42,7 @@ Resolves: #issue-number
 ```
 
 Where `type` is one of:
+
 - **feat**: A new feature
 - **fix**: A bug fix
 - **docs**: Documentation changes
@@ -65,6 +66,7 @@ And `scope` is the area of the codebase your changes affect (e.g., scraper, api,
 ## 🧪 Testing
 
 Before submitting a PR, test your changes on various websites, especially:
+
 - Content-heavy sites
 - Sites with dynamic content loading
 - Sites with different content structures
@@ -80,6 +82,7 @@ Before submitting a PR, test your changes on various websites, especially:
 ## ❓ Questions?
 
 If you have any questions or need clarification, feel free to:
+
 - Open an issue with your question
 - Reach out to the maintainers
 

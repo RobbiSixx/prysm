@@ -53,6 +53,7 @@ npm run start:cli "https://example.com" --pages 3 --linkSelector ".article-link"
 ```
 
 ### CLI Options
+
 - `--pages <number>` - Maximum number of pages to scrape (default: 1)
 - `--linkSelector <selector>` - CSS selector for links to follow when using --pages
 - `--allDomains` - Follow links to any domain (default: same domain only)
@@ -66,6 +67,7 @@ npm run start:cli "https://example.com" --pages 3 --linkSelector ".article-link"
 - `--output <path>` - Custom output path for results
 
 Prysm will automatically:
+
 - Detect page structure (article, recipe, product listing, etc.)
 - Choose the best extraction strategy
 - Handle pagination if present
@@ -86,6 +88,7 @@ Prysm includes a full-featured REST API that allows you to:
 ### Available Endpoints
 
 #### 1. Create Scraping Job
+
 ```bash
 POST http://localhost:3001/api/jobs
 
@@ -111,6 +114,7 @@ POST http://localhost:3001/api/jobs
 ```
 
 #### 2. Check Job Status
+
 ```bash
 GET http://localhost:3001/api/jobs/{jobId}
 
@@ -126,6 +130,7 @@ GET http://localhost:3001/api/jobs/{jobId}
 ```
 
 #### 3. Get Job Results
+
 ```bash
 GET http://localhost:3001/api/jobs/{jobId}/results
 
@@ -145,6 +150,7 @@ GET http://localhost:3001/api/jobs/{jobId}/results
 ```
 
 #### 4. List All Jobs
+
 ```bash
 GET http://localhost:3001/api/jobs?status=completed&limit=20&offset=0
 
@@ -166,12 +172,15 @@ GET http://localhost:3001/api/jobs?status=completed&limit=20&offset=0
 ```
 
 #### 5. Cancel/Delete Job
+
 ```bash
 DELETE http://localhost:3001/api/jobs/{jobId}
 ```
 
 ### API Documentation UI
+
 When running the API server, full OpenAPI/Swagger documentation is available at:
+
 ```
 http://localhost:3001/api-docs
 ```
@@ -181,6 +190,7 @@ http://localhost:3001/api-docs
 ## 📁 Output
 
 All results are saved in the `scraper/results` folder:
+
 - CLI results in the `results` directory
 - API job results in the `results/api` folder
 

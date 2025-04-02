@@ -11,6 +11,7 @@ npm run start:api
 The API server automatically finds an available port (defaults to 3000 if available). If port 3000 is in use, it will try 3001, 3002, etc.
 
 When the server starts, you'll see output like:
+
 ```
 ✨ Prysm API running at http://localhost:3001
 📚 API Documentation available at http://localhost:3001/api-docs
@@ -19,6 +20,7 @@ When the server starts, you'll see output like:
 ## API Documentation
 
 Full interactive documentation is available at `/api-docs` when the server is running:
+
 ```
 http://localhost:3001/api-docs
 ```
@@ -32,6 +34,7 @@ POST /api/jobs
 ```
 
 Request body:
+
 ```json
 {
   "url": "https://example.com/page-to-scrape",
@@ -49,6 +52,7 @@ Request body:
 ```
 
 **Parameters:**
+
 - `url` (required): URL to scrape
 - `options`: Configuration options
   - `maxScrolls`: Maximum scroll attempts (default: 5)
@@ -61,6 +65,7 @@ Request body:
 - `webhook`: URL to receive notifications when job completes (optional)
 
 **Example using curl:**
+
 ```bash
 curl -X POST http://localhost:3001/api/jobs \
   -H "Content-Type: application/json" \
@@ -74,6 +79,7 @@ curl -X POST http://localhost:3001/api/jobs \
 ```
 
 **Response:**
+
 ```json
 {
   "jobId": "job_xyz123",
@@ -90,11 +96,13 @@ GET /api/jobs/{jobId}
 ```
 
 **Example:**
+
 ```bash
 curl http://localhost:3001/api/jobs/job_xyz123
 ```
 
 **Response:**
+
 ```json
 {
   "jobId": "job_xyz123",
@@ -113,11 +121,13 @@ GET /api/jobs/{jobId}/results
 ```
 
 **Example:**
+
 ```bash
 curl http://localhost:3001/api/jobs/job_xyz123/results
 ```
 
 **Response:**
+
 ```json
 {
   "jobId": "job_xyz123",
@@ -140,16 +150,19 @@ GET /api/jobs
 ```
 
 **Query Parameters:**
+
 - `status`: Filter by job status (pending/processing/completed/failed/cancelled)
 - `limit`: Maximum number of jobs to return (default: 20)
 - `offset`: Offset for pagination (default: 0)
 
 **Example:**
+
 ```bash
 curl http://localhost:3001/api/jobs?status=completed&limit=20&offset=0
 ```
 
 **Response:**
+
 ```json
 {
   "jobs": [
@@ -174,6 +187,7 @@ DELETE /api/jobs/{jobId}
 ```
 
 **Example:**
+
 ```bash
 curl -X DELETE http://localhost:3001/api/jobs/job_xyz123
 ```
@@ -192,6 +206,7 @@ The API returns appropriate HTTP status codes and error messages for different s
 - `429 Too Many Requests`: Rate limit exceeded
 
 Example error response:
+
 ```json
 {
   "message": "Job with ID job_xyz123 not found",
