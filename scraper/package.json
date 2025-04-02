@@ -1,0 +1,28 @@
+{
+  "name": "universal-scraper",
+  "version": "1.0.0",
+  "description": "Universal web scraping tool with support for various pagination methods",
+  "main": "universalScraper.js",
+  "scripts": {
+    "test": "jest",
+    "test:local": "jest tests/local.test.js",
+    "start:mock": "node tests/mockServer/server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "puppeteer": "^22.15.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-node": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout": 30000,
+    "setupFilesAfterEnv": [
+      "./tests/jest.setup.js"
+    ]
+  }
+}
