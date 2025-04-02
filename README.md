@@ -12,8 +12,7 @@ Prysm is a blazing-smart Puppeteer-based web scraper that doesn't just extract �
 - 🕵️‍♂️ **Cloudflare Bypass**: Defeats the orange wall with stealth plugins and anti-bot evasion.
 - 🚫 **Resource Blocking**: Faster scrapes with image/script/fonts tracking turned off.
 - 🔄 **Smart Pagination**: Scroll, click, or URL pattern — handled automatically or manually.
-- 🧪 **Test Suite**: A built-in command-line test runner with category presets and results output.
-- 🛠 **Pluggable & Modular**: Add your own extractors, test sites, or pagination styles in seconds.
+- 🛠 **Pluggable & Modular**: Add your own extractors, pagination styles, or content processors in seconds.
 - 🌐 **REST API**: OpenAPI-powered REST interface for remote control and integration.
 
 ---
@@ -24,8 +23,8 @@ Prysm is a blazing-smart Puppeteer-based web scraper that doesn't just extract �
 # Install dependencies
 npm install
 
-# Run CLI test scraper
-npm run start:cli all
+# Run scraper on example URL
+npm run start:cli "https://example.com"
 
 # Start the REST API server
 npm run start:api
@@ -51,17 +50,14 @@ npm run start:cli "https://example.com" --pages 5
 
 # Scrape with custom link selector (useful for specific content types)
 npm run start:cli "https://example.com" --pages 3 --linkSelector ".article-link"
-
-# Run test suite (includes various test sites)
-npm run start:cli test
 ```
 
 ### CLI Options
 - `--pages <number>` - Maximum number of pages to scrape (default: 1)
 - `--linkSelector <selector>` - CSS selector for links to follow when using --pages
 - `--allDomains` - Follow links to any domain (default: same domain only)
-- `--maxScrolls <number>` - Maximum scroll attempts (default: 5)
-- `--scrollDelay <ms>` - Delay between scrolls in ms (default: 2000)
+- `--maxScrolls <number>` - Maximum scroll attempts (default: 100)
+- `--scrollDelay <ms>` - Delay between scrolls in ms (default: 1000)
 - `--bypassCloudflare` - Enable Cloudflare bypass (default: true)
 - `--handlePagination` - Auto-handle pagination (default: true)
 - `--paginationStrategy <strategy>` - Force pagination strategy (infinite/click/url)
@@ -97,8 +93,8 @@ POST http://localhost:3001/api/jobs
 {
   "url": "https://example.com/page-to-scrape",
   "options": {
-    "maxScrolls": 5,                 # Optional: scroll attempts
-    "scrollDelay": 2000,            # Optional: delay between scrolls (ms)
+    "maxScrolls": 100,              # Optional: scroll attempts
+    "scrollDelay": 1000,            # Optional: delay between scrolls (ms)
     "bypassCloudflare": true,       # Optional: bypass Cloudflare
     "handlePagination": true,       # Optional: auto-handle pagination
     "paginationStrategy": "infinite" # Optional: force pagination strategy
