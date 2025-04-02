@@ -1,18 +1,28 @@
 {
-  "name": "universal-scraper",
+  "name": "prysm-scraper",
   "version": "1.0.0",
-  "description": "Universal web scraping tool with support for various pagination methods",
-  "main": "universalScraper.js",
+  "description": "Structure-aware web scraping tool with REST API support",
+  "main": "main_scraper.js",
   "scripts": {
     "test": "jest",
     "test:local": "jest tests/local.test.js",
-    "start:mock": "node tests/mockServer/server.js"
+    "start:mock": "node tests/mockServer/server.js",
+    "start:api": "node api/server.js",
+    "start:cli": "node main_scraper.js",
+    "scrape": "node main_scraper.js"
   },
   "dependencies": {
-    "express": "^4.21.2",
+    "express": "^4.18.2",
     "puppeteer": "^22.15.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2"
+  },
+  "optionalDependencies": {
+    "axios": "^1.6.7",
+    "cors": "^2.8.5",
+    "express-openapi-validator": "^5.1.3",
+    "js-yaml": "^4.1.0",
+    "swagger-ui-express": "^5.0.0"
   },
   "devDependencies": {
     "jest": "^29.7.0",
@@ -24,5 +34,18 @@
     "setupFilesAfterEnv": [
       "./tests/jest.setup.js"
     ]
-  }
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": [
+    "web-scraper",
+    "puppeteer",
+    "structure-aware",
+    "api",
+    "openapi",
+    "rest"
+  ],
+  "author": "Pink Pixel",
+  "license": "MIT"
 }

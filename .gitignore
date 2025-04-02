@@ -48,7 +48,11 @@ Thumbs.db
 
 # Test coverage
 coverage/
+test_scraper.js
 
 # Temporary files
 tmp/
-temp/ 
+temp/
+
+# Temp test files
+scraper/test_scraper.js 

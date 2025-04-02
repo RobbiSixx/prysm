@@ -6,9 +6,110 @@ const { InfiniteScrollStrategy, ClickPaginationStrategy, URLPaginationStrategy }
 const { MainExtractor } = require('./utils/mainExtractor');
 const { sleep, waitForSelector } = require('./utils/helpers');
 const cloudflareBypass = require('./utils/cloudflareBypass');
+const fs = require('fs').promises;
+const path = require('path');
 
 // Initialize stealth mode
 puppeteer.use(StealthPlugin());
+
+/**
+ * Parse command line arguments
+ */
+function parseArguments(args) {
+  const options = {
+    maxScrolls: 5,
+    scrollDelay: 2000,
+    bypassCloudflare: true,
+    handlePagination: true,
+    headless: true,
+    paginationStrategy: null,
+    output: path.join(__dirname, 'results')
+  };
+
+  let url = null;
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    
+    if (arg.startsWith('--')) {
+      const value = args[i + 1];
+      switch (arg) {
+        case '--maxScrolls':
+          options.maxScrolls = parseInt(value, 10);
+          i++;
+          break;
+        case '--scrollDelay':
+          options.scrollDelay = parseInt(value, 10);
+          i++;
+          break;
+        case '--bypassCloudflare':
+          options.bypassCloudflare = true;
+          break;
+        case '--noBypassCloudflare':
+          options.bypassCloudflare = false;
+          break;
+        case '--handlePagination':
+          options.handlePagination = true;
+          break;
+        case '--noHandlePagination':
+          options.handlePagination = false;
+          break;
+        case '--paginationStrategy':
+          if (['infinite', 'click', 'url'].includes(value)) {
+            options.paginationStrategy = value;
+          }
+          i++;
+          break;
+        case '--headless':
+          options.headless = true;
+          break;
+        case '--noHeadless':
+          options.headless = false;
+          break;
+        case '--output':
+          options.output = value;
+          i++;
+          break;
+        case '--help':
+          showHelp();
+          process.exit(0);
+      }
+    } else if (!url) {
+      url = arg;
+    }
+  }
+
+  return { url, options };
+}
+
+/**
+ * Show help message
+ */
+function showHelp() {
+  console.log(`
+🔍 Prysm - Structure-Aware Web Scraper
+
+Usage: npm run start:cli [url] [options]
+
+Options:
+  --maxScrolls <number>     Maximum scroll attempts (default: 5)
+  --scrollDelay <ms>       Delay between scrolls in ms (default: 2000)
+  --bypassCloudflare      Enable Cloudflare bypass (default: true)
+  --noBypassCloudflare    Disable Cloudflare bypass
+  --handlePagination      Enable auto pagination (default: true)
+  --noHandlePagination    Disable auto pagination
+  --paginationStrategy    Force pagination strategy (infinite/click/url)
+  --headless             Run in headless mode (default: true)
+  --noHeadless          Run with browser visible
+  --output <path>       Custom output path for results
+  --help                Show this help message
+
+Examples:
+  npm run start:cli "https://example.com"
+  npm run start:cli "https://example.com" --maxScrolls 10 --noHeadless
+  npm run start:cli "https://example.com" --output "./results"
+`);
+}
 
 /**
  * Main scraper function that focuses on structure detection and content extraction.
@@ -210,6 +311,79 @@ async function handleManualPagination(page, strategy, options) {
   }
 
   await paginationStrategy.paginate();
+}
+
+// If running from command line
+if (require.main === module) {
+  const args = process.argv.slice(2);
+  
+  if (args.length === 0 || args.includes('--help')) {
+    showHelp();
+    process.exit(0);
+  }
+
+  const { url, options } = parseArguments(args);
+
+  if (!url) {
+    console.error('❌ Error: URL is required');
+    showHelp();
+    process.exit(1);
+  }
+
+  // Create output directory if it doesn't exist
+  fs.mkdir(options.output, { recursive: true })
+    .then(async () => {
+      try {
+        console.log(`\n🔍 Prysm Web Scraper`);
+        console.log(`=====================================`);
+        console.log(`🎯 Target URL: ${url}`);
+        console.log(`📁 Results will be saved to: ${options.output}`);
+        console.log(`⚙️  Options: ${JSON.stringify(options, null, 2)}`);
+        console.log(`=====================================\n`);
+
+        const result = await mainScraper(url, options);
+        
+        // Create a safe filename from the URL
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const urlObj = new URL(url);
+        const sanitizedDomain = urlObj.hostname.replace(/[^a-z0-9]/g, '_');
+        const sanitizedPath = urlObj.pathname.replace(/[^a-z0-9]/g, '_').slice(0, 30);
+        const filename = `${sanitizedDomain}${sanitizedPath}_${timestamp}.json`;
+        const outputFile = path.join(options.output, filename);
+        
+        // Save the results
+        await fs.writeFile(outputFile, JSON.stringify({
+          url,
+          scrapeDate: new Date().toISOString(),
+          options,
+          result
+        }, null, 2));
+        
+        console.log('\n✨ Scraping completed successfully!');
+        console.log(`\n📊 Results Summary:`);
+        console.log(`=====================================`);
+        console.log(`📄 Title: ${result.title}`);
+        console.log(`📝 Content Items: ${result.content.length}`);
+        console.log(`🔍 Structure Type: ${result.structureType}`);
+        console.log(`📑 Pagination Type: ${result.paginationType}`);
+        console.log(`⚙️  Extraction Method: ${result.extractionMethod}`);
+        console.log(`\n💾 Full results saved to:`);
+        console.log(outputFile);
+        console.log(`=====================================`);
+        
+      } catch (error) {
+        console.error('\n❌ Error during scraping:');
+        console.error('=====================================');
+        if (error.message) console.error(error.message);
+        if (error.stack) console.error(error.stack);
+        console.error('=====================================');
+        process.exit(1);
+      }
+    })
+    .catch(error => {
+      console.error('\n❌ Error creating output directory:', error);
+      process.exit(1);
+    });
 }
 
 module.exports = mainScraper; 
