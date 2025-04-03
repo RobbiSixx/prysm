@@ -30,6 +30,17 @@ npm run scrape "https://example.com" --maxScrolls 10 --noHeadless
 - `--output <path>` - Custom output path for results
 - `--help` - Show help message
 
+### Smart Scan Options
+
+- `--analyze` - Run analysis without scraping (for testing)
+- `--skipAnalysis` - Disable Smart Scan for traditional brute force approach
+- `--focused` - Optimize for speed with fewer scrolls, main content only
+- `--standard` - Balanced approach (default)
+- `--deep` - Maximum extraction, slower but thorough
+- `--article` - Optimize for articles and blog posts
+- `--product` - Optimize for product pages
+- `--listing` - Optimize for product listings
+
 ### Examples
 
 ```bash
@@ -44,6 +55,15 @@ npm run scrape "https://example.com" --noHeadless
 
 # Custom output location
 npm run scrape "https://example.com" --output "./my-results"
+
+# Use Smart Scan with focused mode (faster)
+npm run scrape "https://example.com" --focused
+
+# Analyze site structure without scraping
+npm run scrape "https://example.com" --analyze
+
+# Optimize for article content
+npm run scrape "https://example.com" --article
 ```
 
 ## 2. Starting the API Server
@@ -80,4 +100,4 @@ If you encounter errors:
 1. Make sure you have all dependencies installed: `npm install`
 2. Check if the URL is accessible in a regular browser
 3. Try with `--noHeadless` to see what's happening in the browser
-4. Disable Cloudflare bypass with `--noBypassCloudflare` if you're having issues 
+4. Disable Cloudflare bypass with `--noBypassCloudflare` if you're having issues

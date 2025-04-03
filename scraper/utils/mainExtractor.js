@@ -8,6 +8,9 @@
 // Import default options from utils
 const { DEFAULT_OPTIONS } = require('./defaultOptions');
 
+// Import chalk for colored output
+const chalk = require('chalk');
+
 // Create helper function for consistent delays
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -32,7 +35,12 @@ const sanitizeSelector = (selector) => {
 };
 
 class MainExtractor {
-  constructor(page) {
+  /**
+   * Create a new MainExtractor instance
+   * @param {Object} page - Puppeteer page instance
+   * @param {Object} options - Options for extraction
+   */
+  constructor(page, options = {}) {
     this.page = page;
     this.data = {
       url: '',
@@ -41,6 +49,13 @@ class MainExtractor {
       images: [],
       metadata: {}
     };
+    
+    // Apply analysis results if available
+    this.analysisResult = options.analysisResult || null;
+    
+    // Configure extractor options from analysis
+    this.priorityExtractors = [];
+    this.skipExtractors = [];
     
     // Add compatibility for different Puppeteer versions
     this.ensureCompatibility();
@@ -79,6 +94,75 @@ class MainExtractor {
   }
 
   /**
+   * Determines if an extractor should be run based on Smart Scan analysis
+   * @param {string} extractorName - Name of the extractor method
+   * @returns {boolean} Whether the extractor should run
+   */
+  shouldRunExtractor(extractorName) {
+    // Skip if explicitly included in skipExtractors
+    if (this.skipExtractors.includes(extractorName)) {
+      return false;
+    }
+    
+    // If there are priority extractors defined, only run those
+    if (this.priorityExtractors.length > 0) {
+      return this.priorityExtractors.includes(extractorName);
+    }
+    
+    // Otherwise run all extractors
+    return true;
+  }
+
+  /**
+   * Check if extraction is already sufficient
+   * @param {Array} content - The extracted content
+   * @returns {boolean} True if content is sufficient
+   * @private
+   */
+  _isExtractionSufficient(content) {
+    if (!content || !Array.isArray(content)) return false;
+    
+    // Filter out empty items
+    const validContent = content.filter(item => {
+      if (typeof item === 'string') return item.trim().length > 0;
+      if (typeof item === 'object' && item.text) return item.text.trim().length > 0;
+      return false;
+    });
+    
+    // Check content count
+    if (validContent.length < 2) return false;
+    
+    // Calculate total text length
+    const totalLength = validContent.reduce((sum, item) => {
+      const text = typeof item === 'string' ? item : item.text || '';
+      return sum + text.length;
+    }, 0);
+    
+    // Check if we have at least one heading/title
+    const hasHeading = validContent.some(item => {
+      if (typeof item === 'object' && item.tag) {
+        return ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'title'].includes(item.tag);
+      }
+      return false;
+    });
+    
+    // Check if this is a minimal site (like example.com)
+    const isMinimalSite = this.page.url().includes('example.com') || 
+                          totalLength < 500 && validContent.length < 5;
+    
+    // For minimal sites, use much lower thresholds
+    if (isMinimalSite) {
+      return hasHeading && validContent.length >= 2;
+    }
+    
+    // Consider extraction sufficient if we have:
+    // 1. Reasonable amount of content (>1000 chars)
+    // 2. At least one heading
+    // 3. At least 5 content items
+    return (totalLength > 1000 && hasHeading && validContent.length >= 5);
+  }
+
+  /**
    * Main extraction method that tries all extraction approaches
    */
   async extract() {
@@ -90,61 +174,91 @@ class MainExtractor {
         this.data.title = await this.extractTitle();
       }
       
-      // Try ALL extraction methods unconditionally - pure brute force
-      const recipesContent = await this.extractFromRecipes();
-      newContent.push(...(recipesContent || []));
+      // Sort extractors by priority if provided
+      const sortedExtractors = this._getSortedExtractors();
       
-      const articleContent = await this.extractFromArticle();
-      newContent.push(...(articleContent || []));
-      
-      const mainContent = await this.extractFromMainContent();
-      newContent.push(...(mainContent || []));
-      
-      const semanticContent = await this.extractFromSemantic();
-      newContent.push(...(semanticContent || []));
-      
-      const headerContentFooter = await this.extractFromHeaderContentFooter();
-      newContent.push(...(headerContentFooter || []));
-      
-      const multiColumnContent = await this.extractFromMultiColumn();
-      newContent.push(...(multiColumnContent || []));
-      
-      const contentSections = await this.extractFromContentSections();
-      newContent.push(...(contentSections || []));
-      
-      const singleColumnContent = await this.extractFromSingleColumn();
-      newContent.push(...(singleColumnContent || []));
-      
-      const largestContent = await this.extractFromLargest();
-      newContent.push(...(largestContent || []));
-      
-      const productContent = await this.extractFromProduct();
-      newContent.push(...(productContent || []));
-      
-      const docContent = await this.extractFromDocumentation();
-      newContent.push(...(docContent || []));
-      
-      const basicContent = await this.extractFromBasic();
-      newContent.push(...(basicContent || []));
-      
-      const textDensityContent = await this.extractFromTextDensity();
-      newContent.push(...(textDensityContent || []));
+      // Try each extractor until we get sufficient content
+      for (const extractorName of sortedExtractors) {
+        if (this._isExtractionSufficient(this.data.content)) {
+          // We already have good content, skip remaining extractors
+          break;
+        }
+        
+        try {
+          let extractedContent = [];
+          switch (extractorName) {
+            case 'recipes':
+              extractedContent = await this.extractFromRecipes();
+              break;
+            case 'article':
+              extractedContent = await this.extractFromArticle();
+              break;
+            case 'mainContent':
+              extractedContent = await this.extractFromMainContent();
+              break;
+            case 'semantic':
+              extractedContent = await this.extractFromSemantic();
+              break;
+            case 'headerContentFooter':
+              extractedContent = await this.extractFromHeaderContentFooter();
+              break;
+            case 'multiColumn':
+              extractedContent = await this.extractFromMultiColumn();
+              break;
+            case 'contentSections':
+              extractedContent = await this.extractFromContentSections();
+              break;
+            case 'singleColumn':
+              extractedContent = await this.extractFromSingleColumn();
+              break;
+            case 'largestContent':
+              extractedContent = await this.extractFromLargest();
+              break;
+            case 'product':
+              extractedContent = await this.extractFromProduct();
+              break;
+            case 'documentation':
+              extractedContent = await this.extractFromDocumentation();
+              break;
+            case 'basic':
+              extractedContent = await this.extractFromBasic();
+              break;
+            case 'textDensity':
+              extractedContent = await this.extractFromTextDensity();
+              break;
+          }
+          
+          if (extractedContent && extractedContent.length > 0) {
+            newContent.push(...extractedContent);
+            
+            // Add to this.data.content immediately to check if it's sufficient
+            const uniqueContent = extractedContent.filter(item => {
+              if (!item) return false;
+              const text = typeof item === 'string' ? item : item.text;
+              if (!text) return false;
+              return !this.data.content.some(existing => {
+                const existingText = typeof existing === 'string' ? existing : existing.text;
+                return existingText === text;
+              });
+            });
+            
+            this.data.content.push(...uniqueContent);
+            
+            // Check if we now have sufficient content
+            if (this._isExtractionSufficient(this.data.content)) {
+              // Set a flag to indicate we found an optimal method
+              this.foundOptimalMethod = true;
+              this.optimalMethod = extractorName;
+              break;
+            }
+          }
+        } catch (error) {
+          // Continue to next extractor if one fails
+        }
+      }
       
       // Always extract images
       await this.extractImages();
-      
-      // Add any content in this extraction that wasn't already present
-      const existingContentSet = new Set(this.data.content.map(item => item.trim()));
-      const uniqueNewContent = newContent.filter(item => 
-        item && 
-        !existingContentSet.has(item.trim())
-      );
-      
-      // Add unique new content to existing content
-      this.data.content = [
-        ...this.data.content,
-        ...uniqueNewContent.map(item => item.trim())
-      ];
       
       // Always extract metadata
       await this.extractMetadata();
@@ -156,46 +270,112 @@ class MainExtractor {
   }
 
   /**
-   * Applies all pagination approaches in brute force mode
+   * Simple extraction for basic sites (much faster)
+   * @private
    */
-  async attemptPagination() {
-    try {
-      // First try URL parameter pagination
-      await this.handleUrlPagination('page/{num}', DEFAULT_OPTIONS.pages);
-      
-      // Then try infinite scroll
-      await this.handleInfiniteScroll(DEFAULT_OPTIONS.maxScrolls);
-      
-      // Try ALL click-based pagination selectors without condition
-      const paginationSelectors = [
-        '.pagination a', '.pager a', '.page-numbers', 
-        '[aria-label*="page"]', '[aria-label*="Page"]', '.pages a',
-        'a.next', 'button.next', '[rel="next"]', '.load-more',
-        '.more', '.next', '.view-more', '.show-more', 
-        '.load-more-button', '.load-more-link', '.pagination__next',
-        '.pagination-next', '.pagination__item--next', '.pagination-item-next',
-        '[data-page-next]', '[data-testid="pagination-next"]', 
-        '.react-paginate .next', '.rc-pagination-next',
-        '.paging-next', '.nextPage', '.next-page',
-        'li.next a', 'span.next a', 'button[rel="next"]',
-        'a[rel="next"]', 'a.nextLink', 'a.nextpage',
-        '[data-pagination="next"]', '[data-test="pagination-next"]',
-        '.Pagination-module--next', '[data-component="next"]',
-        'button:contains("Next")', 'a:contains("Next")', 
-        'button:contains("More")', 'a:contains("More")',
-        'button:contains("Load")', 'a:contains("Load")',
-        'button:contains("Show")', 'a:contains("Show")'
-      ];
-      
-      // Try every click pagination selector
-      for (const selector of paginationSelectors) {
-        await this.handleClickPagination(selector, DEFAULT_OPTIONS.maxScrolls);
+  async _simpleExtraction() {
+    // Get basic page info
+    await this.extractTitle();
+    await this.extractMetadata();
+    
+    // Extract visible text content with minimal processing
+    const content = await this.page.evaluate(() => {
+      // Simple function to get visible text from the page
+      function getVisibleText(element, depth = 0) {
+        if (!element) return [];
+        if (depth > 5) return []; // Limit recursion
+        
+        // Skip hidden elements
+        const style = window.getComputedStyle(element);
+        if (style.display === 'none' || style.visibility === 'hidden') {
+          return [];
+        }
+        
+        // Get text content if this is a text node
+        if (element.nodeType === Node.TEXT_NODE) {
+          const text = element.textContent.trim();
+          return text ? [{ text, tag: 'p' }] : [];
+        }
+        
+        // Skip script, style, and certain other elements
+        const tagName = element.tagName?.toLowerCase();
+        if (['script', 'style', 'noscript', 'svg', 'iframe'].includes(tagName)) {
+          return [];
+        }
+        
+        // For headings, get text with appropriate tag
+        if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName)) {
+          const text = element.textContent.trim();
+          return text ? [{ text, tag: tagName, important: true }] : [];
+        }
+        
+        // For paragraphs or divs with text
+        if (tagName === 'p' || (tagName === 'div' && element.childNodes.length <= 3)) {
+          const text = element.textContent.trim();
+          if (text && text.length > 10) {
+            return [{ text, tag: tagName }];
+          }
+        }
+        
+        // Recursively process child nodes
+        let results = [];
+        for (const child of element.childNodes) {
+          results = results.concat(getVisibleText(child, depth + 1));
+        }
+        return results;
       }
       
-      return true;
-    } catch (error) {
-      return false;
+      // Main content usually in these elements
+      const mainElements = [
+        document.querySelector('main'),
+        document.querySelector('article'),
+        document.querySelector('#content'),
+        document.querySelector('.content'),
+        document.querySelector('#main'),
+        document.querySelector('.main'),
+        document.body // Fallback
+      ].filter(Boolean);
+      
+      // Get text from main content first
+      let allContent = [];
+      for (const element of mainElements) {
+        const content = getVisibleText(element);
+        if (content.length > 0) {
+          allContent = allContent.concat(content);
+          // If we found good content, we can stop
+          if (content.length > 5) break;
+        }
+      }
+      
+      // Images
+      const images = Array.from(document.querySelectorAll('img'))
+        .filter(img => {
+          const src = img.src;
+          const width = img.width || 0;
+          const height = img.height || 0;
+          return src && src.startsWith('http') && width > 100 && height > 100;
+        })
+        .map(img => ({
+          url: img.src,
+          alt: img.alt || '',
+          width: img.width || 0,
+          height: img.height || 0
+        }));
+      
+      return { content: allContent, images };
+    });
+    
+    // Add the extracted content and images to our data
+    if (content.content && content.content.length > 0) {
+      this.data.content = this.data.content.concat(content.content);
     }
+    
+    if (content.images && content.images.length > 0) {
+      this.data.images = this.data.images.concat(content.images);
+    }
+    
+    // Deduplicate
+    this._deduplicateContent();
   }
 
   /**
@@ -1844,44 +2024,79 @@ class MainExtractor {
 
   /**
    * Extracts metadata from the page
+   * @param {Object} options - Extraction options
    */
-  async extractMetadata() {
+  async extractMetadata(options = {}) {
+    // Time how long metadata extraction takes
+    const metadataStartTime = Date.now();
+    
     try {
+      if (!this.page) {
+        return {};
+      }
+
       const metadata = await this.page.evaluate(() => {
-        const result = {};
-        
-        // Extract meta tags
-        const metaTags = document.querySelectorAll('meta');
-        for (const meta of metaTags) {
+        const result = {
+          meta: {},
+          jsonld: null,
+          openGraph: {},
+          twitter: {}
+        };
+
+        // Extract essential meta tags only
+        const essentialMetaTags = ['title', 'description', 'keywords', 'author'];
+        document.querySelectorAll('meta').forEach(meta => {
           const name = meta.getAttribute('name') || meta.getAttribute('property');
           const content = meta.getAttribute('content');
+          
           if (name && content) {
-            result[name] = content;
-          }
-        }
-        
-        // Extract JSON-LD
-        const jsonLdScripts = document.querySelectorAll('script[type="application/ld+json"]');
-        if (jsonLdScripts.length > 0) {
-          result.jsonLd = [];
-          for (const script of jsonLdScripts) {
-            try {
-              const json = JSON.parse(script.textContent);
-              result.jsonLd.push(json);
-            } catch (e) {
-              // Ignore invalid JSON
+            // Always include Open Graph and Twitter tags
+            if (name.startsWith('og:')) {
+              result.openGraph[name.replace('og:', '')] = content;
+            } else if (name.startsWith('twitter:')) {
+              result.twitter[name.replace('twitter:', '')] = content; 
+            } else if (essentialMetaTags.includes(name) || name.includes('title') || name.includes('description')) {
+              // Only include essential meta tags
+              result.meta[name] = content;
             }
           }
+        });
+
+        // Extract JSON-LD data (with timeout protection)
+        try {
+          // Look for JSON-LD scripts
+          const jsonldScripts = document.querySelectorAll('script[type="application/ld+json"]');
+          if (jsonldScripts.length > 0) {
+            // Only process the first JSON-LD script to save time
+            const jsonldScript = jsonldScripts[0];
+            try {
+              const jsonContent = JSON.parse(jsonldScript.textContent);
+              result.jsonld = jsonContent;
+            } catch (e) {
+              // Invalid JSON, skip it
+            }
+          }
+        } catch (e) {
+          // If JSON-LD extraction fails, continue without it
         }
-        
+
         return result;
       });
+
+      const metadataEndTime = Date.now();
+      const metadataTime = metadataEndTime - metadataStartTime;
       
-      // Store metadata in the data object without logging
+      // If metadata extraction took longer than 1 second, log for diagnostic purposes
+      if (metadataTime > 1000) {
+        console.log(`Metadata extraction completed in ${metadataTime}ms`);
+      }
+
+      // Store metadata in the data object
       this.data.metadata = metadata;
+      
       return metadata;
     } catch (error) {
-      return {};
+      return {}; // Return empty object on error
     }
   }
   
@@ -2066,6 +2281,128 @@ class MainExtractor {
     } catch (error) {
       return [];
     }
+  }
+
+  /**
+   * Run a specific extractor by name
+   * @private
+   */
+  async _runExtractor(extractorName) {
+    try {
+      switch (extractorName) {
+        case 'ArticleExtractor':
+          await this.extractFromArticle();
+          break;
+        case 'ProductExtractor':
+          await this.extractFromProduct();
+          break;
+        case 'ListingExtractor':
+          await this.extractFromMultiColumn();
+          break;
+        case 'DetailedTextExtractor':
+          await this.extractFromTextDensity();
+          break;
+        case 'BasicExtractor':
+          await this.extractFromBasic();
+          break;
+        // Add any additional extractors as needed
+        default:
+          // Unknown extractor, do nothing
+          break;
+      }
+    } catch (error) {
+      // Silently continue on error
+    }
+  }
+
+  /**
+   * Run all extractors that aren't explicitly skipped
+   * @private
+   */
+  async _runAllExtractors() {
+    // List of all available extractors
+    const allExtractors = [
+      'ArticleExtractor',
+      'ProductExtractor',
+      'ListingExtractor',
+      'DetailedTextExtractor',
+      'BasicExtractor'
+    ];
+    
+    // Run each extractor that isn't in the skip list
+    for (const extractor of allExtractors) {
+      if (!this.skipExtractors?.includes(extractor)) {
+        await this._runExtractor(extractor);
+      }
+    }
+  }
+
+  /**
+   * Deduplicate content items
+   * @private
+   */
+  _deduplicateContent() {
+    if (!this.data.content || this.data.content.length === 0) {
+      return;
+    }
+    
+    // Create a Set to track seen text content
+    const seenContent = new Set();
+    const uniqueContent = [];
+    
+    for (const item of this.data.content) {
+      const text = typeof item === 'string' ? item : item.text;
+      
+      // Skip empty items
+      if (!text || text.trim().length === 0) {
+        continue;
+      }
+      
+      // Skip already seen content
+      if (seenContent.has(text)) {
+        continue;
+      }
+      
+      // Add to unique content and mark as seen
+      uniqueContent.push(item);
+      seenContent.add(text);
+    }
+    
+    this.data.content = uniqueContent;
+  }
+
+  /**
+   * Get sorted extractors based on priority
+   * @returns {Array} Sorted list of extractor names
+   * @private
+   */
+  _getSortedExtractors() {
+    // Default extractor list
+    const allExtractors = [
+      'recipes', 'article', 'mainContent', 'semantic', 'headerContentFooter',
+      'multiColumn', 'contentSections', 'singleColumn', 'largestContent',
+      'product', 'documentation', 'basic', 'textDensity'
+    ];
+    
+    // If no priority or skip lists, return all
+    if (!this.priorityExtractors || this.priorityExtractors.length === 0) {
+      return allExtractors.filter(name => 
+        !this.skipExtractors || !this.skipExtractors.includes(name)
+      );
+    }
+    
+    // Create a sorted list starting with priority extractors
+    const result = [...this.priorityExtractors];
+    
+    // Add remaining extractors that aren't skipped
+    for (const extractor of allExtractors) {
+      if (!result.includes(extractor) && 
+          (!this.skipExtractors || !this.skipExtractors.includes(extractor))) {
+        result.push(extractor);
+      }
+    }
+    
+    return result;
   }
 }
 

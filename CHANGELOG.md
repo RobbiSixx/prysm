@@ -2,6 +2,25 @@
 
 All notable changes to the Prysm scraper will be documented in this file.
 
+## [1.4.0] - 2024-04-05
+
+### Added
+
+- 🧠 Smart Scan technology that automatically analyzes page structure for optimized scraping
+- 🔍 Content type detection for articles, products, listings, and more
+- ⚡ Optimized extraction strategies based on detected page structure
+- 🔄 Automated pagination strategy selection
+- 🚀 Performance profiles for different scraping needs (focused, standard, deep)
+- 💨 Streamlined CLI with intuitive speed options (--focused, --standard, --deep)
+- 📊 Improved metadata extraction with automatic optimization
+
+### Changed
+
+- 🎯 Focused metadata extraction to prioritize essential information
+- 🧩 Restructured extractor organization to work with Smart Scan
+- 🤫 Reduced console output for cleaner terminal display
+- ⚙️ Improved default settings for various page types
+
 ## [1.3.4] - 2024-04-04
 
 ### Changed

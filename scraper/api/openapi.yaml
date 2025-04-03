@@ -84,6 +84,38 @@ components:
           type: boolean
           description: Whether to only follow links on the same domain
           default: true
+        analyze:
+          type: boolean
+          description: Run analysis only without scraping (analyze-only mode)
+          default: false
+        skipAnalysis:
+          type: boolean
+          description: Skip Smart Scan analysis (analysis is enabled by default)
+          default: false
+        focused:
+          type: boolean
+          description: Whether to focus on specific content
+          default: false
+        standard:
+          type: boolean
+          description: Whether to use standard scraping
+          default: false
+        deep:
+          type: boolean
+          description: Whether to use deep scraping
+          default: false
+        article:
+          type: boolean
+          description: Whether to scrape articles
+          default: false
+        product:
+          type: boolean
+          description: Whether to scrape products
+          default: false
+        listing:
+          type: boolean
+          description: Whether to scrape listings
+          default: false
     
     JobRequest:
       type: object

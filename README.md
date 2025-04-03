@@ -75,6 +75,47 @@ npm run start:cli "https://example.com" --downloadImages --maxImages 50 --minIma
 - `--maxImages <number>` - Maximum images to extract per page (default: 100)
 - `--minImageSize <pixels>` - Minimum width/height for images (default: 100)
 
+#### Smart Scan Options
+
+- `--analyze` - Run analysis only without scraping
+- `--no-analyze` - Disable Smart Scan (enabled by default)
+- `--focused` - Optimize for speed (fewer scrolls, main content only)
+- `--standard` - Balanced approach (default)
+- `--deep` - Maximum extraction (slower)
+- `--article` - Optimize for articles and blog posts
+- `--product` - Optimize for product pages
+- `--listing` - Optimize for product listings and search results
+
+### 🧠 Smart Scan
+
+Prysm includes an intelligent analysis system that examines page structure before scraping to optimize the extraction process:
+
+```bash
+# Analyze a site structure without scraping
+npm run start:cli "https://example.com" --analyze
+
+# Speed optimization options (choose one)
+npm run start:cli "https://example.com" --focused      # Fastest extraction, focuses on main content
+npm run start:cli "https://example.com" --standard    # Balanced approach (default)
+npm run start:cli "https://example.com" --deep      # Maximum content extraction (slower)
+
+# Content type optimization options (choose one)
+npm run start:cli "https://example.com" --article   # Optimized for blog posts and articles
+npm run start:cli "https://example.com" --product   # Optimized for e-commerce product pages
+npm run start:cli "https://example.com" --listing   # Optimized for product listings and search results
+
+# Skip the Smart Scan analysis
+npm run start:cli "https://example.com" --no-analyze
+```
+
+Smart Scan automatically identifies:
+- Content type (article, product, listing, etc.)
+- Page structure and elements
+- Pagination type and selectors
+- Infinite scroll behavior
+
+Based on this analysis, Prysm dynamically selects the optimal extraction strategy for maximum efficiency.
+
 Prysm will automatically:
 
 - Detect page structure (article, recipe, product listing, etc.)

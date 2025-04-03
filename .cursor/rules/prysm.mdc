@@ -10,23 +10,28 @@ DO NOT EVER ADD MORE LOGGING EVER NO EXCEPTIONS!!!!! SEE BELOW - THIS IS THE ONL
 
 MY OUTPUT:
 
+   ██████╗ ██████╗ ██╗   ██╗███████╗███╗   ███╗
+   ██╔══██╗██╔══██╗╚██╗ ██╔╝██╔════╝████╗ ████║
+   ██████╔╝██████╔╝ ╚████╔╝ ███████╗██╔████╔██║
+   ██╔═══╝ ██╔══██╗  ╚██╔╝  ╚════██║██║╚██╔╝██║
+   ██║     ██║  ██║   ██║   ███████║██║ ╚═╝ ██║
+   ╚═╝     ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝     ╚═╝
+
+
+  ✨ @pinkpixel/prysm-scraper v1.3.4
+
 🚀 Starting Prysm scraper for https://www.cigarscanner.com/tabs/social/users/ebff7911-0be1-4e84-8211-ce7930a508d2
+
+🔍 Analyzing site structure (this will take a moment)...
 
 ⏳ Extracting content (this may take several minutes to complete)...
 .....................................................................................................................................................................................................................................
 
-📸 Found 41 images
 📥 Downloading images to /home/sizzlebop/Desktop/projects/prysm/scraper/results/www_cigarscanner_com_images_2025-04-03T01-29-03.914Z
 .....................
 ✅ Downloaded 21 images (0 failed)
 
 ✨ Scraping completed successfully!
-
-📊 Results Summary:
-=====================================
-📄 Title: Social
-📝 Content Items: 155
-📸 Images: 41
 
 💾 Results saved to:
 /home/sizzlebop/Desktop/projects/prysm/scraper/results/www_cigarscanner_com_tabs_social_users_ebff7911_0b_2025-04-03T01-29-05-191Z.json

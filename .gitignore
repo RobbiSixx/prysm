@@ -58,3 +58,8 @@ temp/
 scraper/test_scraper.js 
 
 docs/dev/
+.cursor/
+.cursor/rules/
+.cursorrules/
+.cursorignore/
+.cursor/rules/prysm.mdc
