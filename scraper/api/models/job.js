@@ -12,6 +12,9 @@ const jobs = new Map();
 // File-based results storage
 const RESULTS_DIR = path.join(__dirname, '../../results/api');
 
+// Import default options from utils
+const { DEFAULT_OPTIONS } = require('../../utils/defaultOptions');
+
 // Ensure results directory exists
 async function ensureResultsDir() {
   try {
@@ -45,17 +48,10 @@ async function createJob(url, options = {}, priority = 5, webhook = null) {
   const jobId = generateJobId();
   const now = new Date();
   
-  // Default values for options
+  // Use the global default options 
   const defaultOptions = {
-    maxScrolls: 5,
-    scrollDelay: 2000,
-    bypassCloudflare: true,
-    handlePagination: true,
-    headless: true,
-    pages: 1, // Default to single page
-    followLinks: false,
-    linkSelector: 'a',
-    sameDomainOnly: true
+    ...DEFAULT_OPTIONS,
+    output: path.join(__dirname, '../../results')  // Override with API-specific path
   };
   
   // Merge with provided options

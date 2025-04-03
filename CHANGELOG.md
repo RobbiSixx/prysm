@@ -2,6 +2,18 @@
 
 All notable changes to the Prysm scraper will be documented in this file.
 
+## [1.3.4] - 2024-04-04
+
+### Changed
+
+- 🔨 Implemented true brute force approach that applies all extraction methods to every page
+- 🚫 Removed all detection logic and thresholds for maximum content extraction
+- 🧹 Removed conditional checks in pagination strategies to try everything on every page
+- 🔄 Simplified pagination handling for more consistent results across different sites
+- 🖼️ Enhanced image extraction to capture all images without filtering
+- 🤫 Significantly reduced console output for a cleaner terminal experience
+- ⚡ Streamlined metadata extraction to focus on content and images
+
 ## [1.3.3] - 2024-04-03
 
 ### Added

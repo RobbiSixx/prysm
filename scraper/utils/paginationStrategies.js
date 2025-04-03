@@ -2,14 +2,17 @@
 
 const { sleep, waitForSelector, safeClick, isElementVisible } = require('./helpers');
 
+// Import default options from utils
+const { DEFAULT_OPTIONS } = require('./defaultOptions');
+
 /**
  * Base pagination strategy class
  */
 class PaginationStrategy {
     constructor(page, options = {}) {
         this.page = page;
-        this.maxAttempts = options.maxAttempts;
-        this.delay = options.delay;
+        this.maxAttempts = options.maxAttempts || DEFAULT_OPTIONS.maxScrolls;
+        this.delay = options.delay || DEFAULT_OPTIONS.scrollDelay;
     }
 
     async paginate() {
@@ -442,9 +445,9 @@ class URLParameterPaginationStrategy {
   constructor(page, options = {}) {
     this.page = page;
     this.options = {
-      maxScrollsPerPage: 30,
-      scrollDelay: 2000,
-      maxPages: 30,
+      maxScrollsPerPage: DEFAULT_OPTIONS.maxScrolls,
+      scrollDelay: DEFAULT_OPTIONS.scrollDelay,
+      maxPages: DEFAULT_OPTIONS.pages,
       pageParameter: 'page',
       waitForSelector: null,
       contentVerificationSelector: null,
@@ -505,7 +508,7 @@ class URLParameterPaginationStrategy {
     this.consecutiveUnchanged = 0;
     
     // Initial pause to let the page load
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, DEFAULT_OPTIONS.scrollDelay));
     
     for (let i = 0; i < this.options.maxScrollsPerPage; i++) {
       // Get the current scroll height
@@ -549,7 +552,7 @@ class URLParameterPaginationStrategy {
     }
     
     // Give a little extra time for final content to load
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, DEFAULT_OPTIONS.scrollDelay));
     return true;
   }
 

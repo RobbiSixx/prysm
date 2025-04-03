@@ -5,6 +5,9 @@
  * on every page to maximize content extraction.
  */
 
+// Import default options from utils
+const { DEFAULT_OPTIONS } = require('./defaultOptions');
+
 // Create helper function for consistent delays
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -47,40 +50,15 @@ class MainExtractor {
    * Ensure compatibility with different Puppeteer versions
    */
   ensureCompatibility() {
-    // Add waitForTimeout if it doesn't exist
-    if (!this.page.waitForTimeout) {
-      this.page.waitForTimeout = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    // Check for waitForFunction compatibility
-    if (!this.page.waitForFunction) {
-      console.log('💡 Added waitForFunction compatibility');
-      // Add a basic implementation
-      this.page.waitForFunction = (pageFunction, options = {}, ...args) => {
-        const { timeout = 30000, polling = 'raf' } = options;
-        const startTime = Date.now();
-        
-        return new Promise(async (resolve, reject) => {
-          const checkCondition = async () => {
-            try {
-              const result = await this.page.evaluate(pageFunction, ...args);
-              if (result) {
-                return resolve(result);
-              }
-              
-              if (Date.now() - startTime > timeout) {
-                return reject(new Error('waitForFunction timeout'));
-              }
-              
-              setTimeout(checkCondition, typeof polling === 'number' ? polling : 100);
-            } catch (error) {
-              reject(error);
-            }
-          };
-          
-          checkCondition();
-        });
-      };
+    try {
+      // Try to add waitForFunction if it doesn't exist
+      if (!this.page.waitForFunction) {
+        this.page.waitForFunction = async (pageFunction, options = {}, ...args) => {
+          return await this.page.evaluate(pageFunction, ...args);
+        };
+      }
+    } catch (error) {
+      // Silently continue if we can't add compatibility
     }
   }
   
@@ -112,62 +90,53 @@ class MainExtractor {
         this.data.title = await this.extractTitle();
       }
       
-      // Try all extraction methods
+      // Try ALL extraction methods unconditionally - pure brute force
       const recipesContent = await this.extractFromRecipes();
-      if (recipesContent && recipesContent.length > 0) {
-        newContent.push(...recipesContent);
-      }
+      newContent.push(...(recipesContent || []));
       
       const articleContent = await this.extractFromArticle();
-      if (articleContent && articleContent.length > 0) {
-        newContent.push(...articleContent);
-      }
+      newContent.push(...(articleContent || []));
       
       const mainContent = await this.extractFromMainContent();
-      if (mainContent && mainContent.length > 0) {
-        newContent.push(...mainContent);
-      }
+      newContent.push(...(mainContent || []));
       
       const semanticContent = await this.extractFromSemantic();
-      if (semanticContent && semanticContent.length > 0) {
-        newContent.push(...semanticContent);
-      }
+      newContent.push(...(semanticContent || []));
       
       const headerContentFooter = await this.extractFromHeaderContentFooter();
-      if (headerContentFooter && headerContentFooter.length > 0) {
-        newContent.push(...headerContentFooter);
-      }
+      newContent.push(...(headerContentFooter || []));
       
       const multiColumnContent = await this.extractFromMultiColumn();
-      if (multiColumnContent && multiColumnContent.length > 0) {
-        newContent.push(...multiColumnContent);
-      }
+      newContent.push(...(multiColumnContent || []));
       
       const contentSections = await this.extractFromContentSections();
-      if (contentSections && contentSections.length > 0) {
-        newContent.push(...contentSections);
-      }
+      newContent.push(...(contentSections || []));
       
       const singleColumnContent = await this.extractFromSingleColumn();
-      if (singleColumnContent && singleColumnContent.length > 0) {
-        newContent.push(...singleColumnContent);
-      }
+      newContent.push(...(singleColumnContent || []));
       
       const largestContent = await this.extractFromLargest();
-      if (largestContent && largestContent.length > 0) {
-        newContent.push(...largestContent);
-      }
+      newContent.push(...(largestContent || []));
       
-      // Attempt to extract images if not already done
-      if (this.data.images.length === 0) {
-        await this.extractImages();
-      }
+      const productContent = await this.extractFromProduct();
+      newContent.push(...(productContent || []));
+      
+      const docContent = await this.extractFromDocumentation();
+      newContent.push(...(docContent || []));
+      
+      const basicContent = await this.extractFromBasic();
+      newContent.push(...(basicContent || []));
+      
+      const textDensityContent = await this.extractFromTextDensity();
+      newContent.push(...(textDensityContent || []));
+      
+      // Always extract images
+      await this.extractImages();
       
       // Add any content in this extraction that wasn't already present
       const existingContentSet = new Set(this.data.content.map(item => item.trim()));
       const uniqueNewContent = newContent.filter(item => 
         item && 
-        item.length > 20 && 
         !existingContentSet.has(item.trim())
       );
       
@@ -177,6 +146,9 @@ class MainExtractor {
         ...uniqueNewContent.map(item => item.trim())
       ];
       
+      // Always extract metadata
+      await this.extractMetadata();
+      
       return this.data;
     } catch (error) {
       return this.data;
@@ -184,32 +156,43 @@ class MainExtractor {
   }
 
   /**
-   * Attempts all pagination approaches silently
+   * Applies all pagination approaches in brute force mode
    */
   async attemptPagination() {
     try {
-      const initialContentLength = this.data.content ? this.data.content.length : 0;
+      // First try URL parameter pagination
+      await this.handleUrlPagination('page/{num}', DEFAULT_OPTIONS.pages);
       
-      // Try infinite scroll
-      await this.handleInfiniteScroll(3);
+      // Then try infinite scroll
+      await this.handleInfiniteScroll(DEFAULT_OPTIONS.maxScrolls);
       
-      // Try click-based pagination with common selectors
+      // Try ALL click-based pagination selectors without condition
       const paginationSelectors = [
         '.pagination a', '.pager a', '.page-numbers', 
         '[aria-label*="page"]', '[aria-label*="Page"]', '.pages a',
         'a.next', 'button.next', '[rel="next"]', '.load-more',
-        '.show-more', '.view-more', '.next-page', '.more'
+        '.more', '.next', '.view-more', '.show-more', 
+        '.load-more-button', '.load-more-link', '.pagination__next',
+        '.pagination-next', '.pagination__item--next', '.pagination-item-next',
+        '[data-page-next]', '[data-testid="pagination-next"]', 
+        '.react-paginate .next', '.rc-pagination-next',
+        '.paging-next', '.nextPage', '.next-page',
+        'li.next a', 'span.next a', 'button[rel="next"]',
+        'a[rel="next"]', 'a.nextLink', 'a.nextpage',
+        '[data-pagination="next"]', '[data-test="pagination-next"]',
+        '.Pagination-module--next', '[data-component="next"]',
+        'button:contains("Next")', 'a:contains("Next")', 
+        'button:contains("More")', 'a:contains("More")',
+        'button:contains("Load")', 'a:contains("Load")',
+        'button:contains("Show")', 'a:contains("Show")'
       ];
       
+      // Try every click pagination selector
       for (const selector of paginationSelectors) {
-        await this.handleClickPagination(selector, 2);
+        await this.handleClickPagination(selector, DEFAULT_OPTIONS.maxScrolls);
       }
       
-      // Try URL-based pagination
-      await this.handleUrlPagination(null, 2);
-      
-      return this.data.content ? 
-        this.data.content.length - initialContentLength > 0 : false;
+      return true;
     } catch (error) {
       return false;
     }
@@ -246,7 +229,6 @@ class MainExtractor {
       
       return articleContent;
     } catch (error) {
-      console.error('Error extracting from article:', error);
       return [];
     }
   }
@@ -282,7 +264,6 @@ class MainExtractor {
       
       return mainContent;
     } catch (error) {
-      console.error('Error extracting from main content:', error);
       return [];
     }
   }
@@ -340,7 +321,6 @@ class MainExtractor {
       
       return content;
     } catch (error) {
-      console.error('Error extracting from header-content-footer:', error);
       return [];
     }
   }
@@ -388,7 +368,6 @@ class MainExtractor {
       
       return content;
     } catch (error) {
-      console.error('Error extracting from multi-column:', error);
       return [];
     }
   }
@@ -455,7 +434,6 @@ class MainExtractor {
       
       return content;
     } catch (error) {
-      console.error('Error extracting from largest content:', error);
       return [];
     }
   }
@@ -548,7 +526,6 @@ class MainExtractor {
       
       return semanticContent;
     } catch (error) {
-      console.error('Error extracting from semantic content:', error);
       return [];
     }
   }
@@ -887,7 +864,6 @@ class MainExtractor {
       
       return recipeData;
     } catch (error) {
-      console.error('Error extracting recipe content:', error);
       return [];
     }
   }
@@ -1121,7 +1097,6 @@ class MainExtractor {
       
       return productContent;
     } catch (error) {
-      console.error('Error extracting from product page:', error);
       return [];
     }
   }
@@ -1283,7 +1258,6 @@ class MainExtractor {
       
       return docContent;
     } catch (error) {
-      console.error('Error extracting from documentation:', error);
       return [];
     }
   }
@@ -1428,7 +1402,6 @@ class MainExtractor {
       
       return hasProductStructure;
     } catch (error) {
-      console.error('Error detecting product structure:', error);
       return false;
     }
   }
@@ -1563,7 +1536,6 @@ class MainExtractor {
       
       return hasDocumentation;
     } catch (error) {
-      console.error('Error detecting documentation structure:', error);
       return false;
     }
   }
@@ -1683,21 +1655,18 @@ class MainExtractor {
       });
       
       if (hasRecipeStructure.isRecipe) {
-        console.log(`✅ Recipe structure detected (score: ${hasRecipeStructure.recipeScore})`);
         this.data.structureType = 'recipe';
         return true;
       }
       
       // If URL suggests it's a recipe, give it another chance
       if (this.page.url().match(/recipe|recipes|cooking|baking|food/i)) {
-        console.log(`⚠️ URL suggests this might be a recipe, forcing recipe structure`);
         this.data.structureType = 'recipe';
         return true;
       }
       
       return false;
     } catch (error) {
-      console.error('Error detecting recipe structure:', error);
       return false;
     }
   }
@@ -1736,7 +1705,6 @@ class MainExtractor {
       
       return content;
     } catch (error) {
-      console.error('Error extracting from content sections:', error);
       return [];
     }
   }
@@ -1801,69 +1769,29 @@ class MainExtractor {
       
       return content;
     } catch (error) {
-      console.error('Error extracting from single column:', error);
       return [];
     }
   }
   
   /**
    * Extracts content using basic selectors
-   * This is a fallback method to get content even if other methods fail
+   * Pure brute force approach without filtering
    */
   async extractFromBasic() {
     try {
       const content = await this.page.evaluate(() => {
         const results = [];
         
-        // Get text from basic content elements
+        // Get text from all content elements
         const contentElements = document.querySelectorAll('p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, div > span, div, section, article');
         
-        // Keep track of what we've already seen to avoid duplicates
-        const seenTexts = new Set();
-        
         for (const elem of contentElements) {
-          // Skip elements with no size (likely hidden)
-          if (elem.offsetWidth === 0 || elem.offsetHeight === 0) continue;
-          
-          // Skip navigation, headers, footers, etc.
-          if (
-            elem.closest('nav') ||
-            elem.closest('header') ||
-            elem.closest('footer') ||
-            elem.closest('aside') ||
-            elem.closest('.sidebar') ||
-            elem.closest('.navigation') ||
-            elem.closest('.menu') ||
-            elem.closest('.nav') ||
-            elem.closest('.ad') ||
-            elem.tagName === 'NAV' ||
-            elem.tagName === 'HEADER' ||
-            elem.tagName === 'FOOTER' ||
-            elem.tagName === 'ASIDE'
-          ) {
-            continue;
-          }
-          
-          // For divs and sections, only consider those with enough text
-          if ((elem.tagName === 'DIV' || elem.tagName === 'SECTION' || elem.tagName === 'ARTICLE') && 
-              elem.textContent.trim().length < 100) {
-            continue;
-          }
-          
           const text = elem.textContent.trim();
           
-          // Skip empty text or very short text
-          if (text.length < 10) continue;
-          
-          // Skip if we've seen this text before
-          if (seenTexts.has(text)) continue;
-          
-          // Add to results and mark as seen
-          results.push(text);
-          seenTexts.add(text);
-          
-          // Limit results to avoid excessive content
-          if (results.length >= 500) break;
+          // Include all text
+          if (text.length > 0) {
+            results.push(text);
+          }
         }
         
         return results;
@@ -1871,106 +1799,37 @@ class MainExtractor {
       
       return content;
     } catch (error) {
-      console.error('Error extracting from basic selectors:', error);
       return [];
     }
   }
 
   /**
-   * Extracts content based on text density analysis
-   * Finds areas with highest text-to-code ratio
+   * Extracts content based on text density 
+   * No filtering, just extract from all elements
    */
   async extractFromTextDensity() {
     try {
       const textDensityContent = await this.page.evaluate(() => {
         const results = [];
         
-        // Calculate text density for all major elements
-        const calculateTextDensity = (element) => {
-          if (!element) return 0;
-          
-          const textLength = element.textContent.trim().length;
-          if (textLength === 0) return 0;
-          
-          const htmlLength = element.innerHTML.length;
-          if (htmlLength === 0) return 0;
-          
-          return textLength / htmlLength;
-        };
-        
-        // Get all potential content containers
+        // Get all potential content containers without filtering
         const containers = document.querySelectorAll('div, section, main, article');
-        const candidates = [];
         
-        // Analyze each container
+        // Extract from all containers
         for (const container of containers) {
-          // Skip small elements, hidden elements, and non-content elements
-          if (
-            container.textContent.trim().length < 200 ||
-            !container.offsetParent ||
-            container.matches('nav, header, footer, aside') ||
-            container.id && /nav|menu|sidebar|header|footer/i.test(container.id) ||
-            container.className && /nav|menu|sidebar|header|footer/i.test(container.className)
-          ) {
-            continue;
-          }
+          // Get all text elements within this container
+          const textElements = container.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote, figcaption, code, pre');
           
-          // Count paragraphs - content usually has multiple paragraphs
-          const paragraphs = container.querySelectorAll('p');
-          
-          // Count links - content usually doesn't have too many links relative to text
-          const links = container.querySelectorAll('a');
-          
-          // Skip if too many links relative to paragraphs
-          if (paragraphs.length < 2 || (links.length > paragraphs.length * 2)) {
-            continue;
-          }
-          
-          // Calculate text density
-          const density = calculateTextDensity(container);
-          
-          // Calculate content score based on multiple factors
-          let score = density * 100;
-          
-          // Bonus for more paragraphs
-          score += paragraphs.length * 5;
-          
-          // Bonus for headings - content often has headings
-          score += container.querySelectorAll('h1, h2, h3, h4, h5, h6').length * 10;
-          
-          // Bonus for images with captions - indicates content
-          score += container.querySelectorAll('figure, figcaption, img[alt]').length * 5;
-          
-          // Bonus for blockquotes - indicates content
-          score += container.querySelectorAll('blockquote').length * 5;
-          
-          // Penalty for ads, iframes, etc.
-          score -= container.querySelectorAll('iframe, ins, .ad, .ads, .advertisement').length * 20;
-          
-          candidates.push({ container, score, paragraphs: paragraphs.length });
-        }
-        
-        // Sort candidates by score
-        candidates.sort((a, b) => b.score - a.score);
-        
-        // Get the top 3 candidates
-        const topCandidates = candidates.slice(0, 3);
-        
-        // Extract content from the best candidates
-        for (const candidate of topCandidates) {
-          // Get all paragraphs, headings, and lists
-          const textElements = candidate.container.querySelectorAll('p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote');
-          
-          for (const elem of textElements) {
-            const text = elem.textContent.trim();
+          for (const textElem of textElements) {
+            const text = textElem.textContent.trim();
             if (text.length > 0) {
               results.push(text);
             }
           }
           
-          // If we got enough content, stop
-          if (results.length > 5) {
-            break;
+          // If no structured elements, get raw text
+          if (textElements.length === 0 && container.textContent.trim().length > 0) {
+            results.push(container.textContent.trim());
           }
         }
         
@@ -1979,7 +1838,6 @@ class MainExtractor {
       
       return textDensityContent;
     } catch (error) {
-      console.error('Error extracting content using text density:', error);
       return [];
     }
   }
@@ -1990,236 +1848,158 @@ class MainExtractor {
   async extractMetadata() {
     try {
       const metadata = await this.page.evaluate(() => {
-        return {
-          title: document.title || '',
-          description: document.querySelector('meta[name="description"]')?.content || document.querySelector('meta[property="og:description"]')?.content || '',
-          ogTitle: document.querySelector('meta[property="og:title"]')?.content || '',
-          ogType: document.querySelector('meta[property="og:type"]')?.content || '',
-          ogImage: document.querySelector('meta[property="og:image"]')?.content || '',
-          ogUrl: document.querySelector('meta[property="og:url"]')?.content || '',
-          twitterCard: document.querySelector('meta[name="twitter:card"]')?.content || '',
-          twitterTitle: document.querySelector('meta[name="twitter:title"]')?.content || '',
-          twitterDescription: document.querySelector('meta[name="twitter:description"]')?.content || '',
-          twitterImage: document.querySelector('meta[name="twitter:image"]')?.content || '',
-          canonicalUrl: document.querySelector('link[rel="canonical"]')?.href || ''
-        };
+        const result = {};
+        
+        // Extract meta tags
+        const metaTags = document.querySelectorAll('meta');
+        for (const meta of metaTags) {
+          const name = meta.getAttribute('name') || meta.getAttribute('property');
+          const content = meta.getAttribute('content');
+          if (name && content) {
+            result[name] = content;
+          }
+        }
+        
+        // Extract JSON-LD
+        const jsonLdScripts = document.querySelectorAll('script[type="application/ld+json"]');
+        if (jsonLdScripts.length > 0) {
+          result.jsonLd = [];
+          for (const script of jsonLdScripts) {
+            try {
+              const json = JSON.parse(script.textContent);
+              result.jsonLd.push(json);
+            } catch (e) {
+              // Ignore invalid JSON
+            }
+          }
+        }
+        
+        return result;
       });
       
+      // Store metadata in the data object without logging
       this.data.metadata = metadata;
-      console.log('✅ Extracted metadata');
-      
       return metadata;
     } catch (error) {
-      console.error('Error extracting metadata:', error);
       return {};
     }
   }
   
   /**
-   * Handles infinite scroll pagination
+   * Handle infinite scroll pagination
    */
-  async handleInfiniteScroll(maxScrolls = 3) {
+  async handleInfiniteScroll(maxScrolls = DEFAULT_OPTIONS.maxScrolls) {
     try {
-      console.log(`🔄 Handling infinite scroll, max scrolls: ${maxScrolls}`);
-      
-      let previousHeight = 0;
-      let scrollCount = 0;
-      let contentBefore = this.data.content ? this.data.content.length : 0;
-      
-      while (scrollCount < maxScrolls) {
+      // Pure brute force - just scroll maxScrolls times with no detection
+      for (let i = 0; i < maxScrolls; i++) {
         // Scroll to bottom
-        previousHeight = await this.page.evaluate('document.body.scrollHeight');
-        await this.page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
-        await this.safeWait(2000); // Wait for content to load
+        await this.page.evaluate(() => {
+          window.scrollTo(0, document.body.scrollHeight);
+        });
         
-        // Check if scrollHeight has increased
-        const newHeight = await this.page.evaluate('document.body.scrollHeight');
-        if (newHeight === previousHeight) {
-          console.log('📜 No more content loaded, stopping scroll');
-          break;
-        }
+        // Wait using default delay
+        await this.safeWait(DEFAULT_OPTIONS.scrollDelay);
         
-        scrollCount++;
-        console.log(`📜 Scrolled ${scrollCount}/${maxScrolls} times, content height: ${newHeight}`);
+        // Extract content after each scroll
+        await this.extract();
       }
-      
-      const newContentItems = this.data.content ? this.data.content.length - contentBefore : 0;
-      if (newContentItems > 0) {
-        console.log(`✅ Added ${newContentItems} new content items from infinite scroll`);
-      }
-      
-      return newContentItems > 0;
     } catch (error) {
-      console.error('Error handling infinite scroll:', error);
-      return false;
+      // Silent failure
     }
   }
 
   /**
    * Handles click-based pagination
    */
-  async handleClickPagination(selector, maxClicks = 2) {
+  async handleClickPagination(selector, maxClicks = DEFAULT_OPTIONS.maxScrolls) {
     try {
-      console.log(`🔄 Handling click pagination for selector: ${selector}, max clicks: ${maxClicks}`);
-      
-      // Sanitize selector to prevent invalid selectors
-      try {
-        // Simple check to see if selector might be problematic
-        if (selector && (selector.includes(':') || selector.includes('(') || selector.includes('['))) {
-          console.log(`⚠️ Potentially problematic selector detected: ${selector}`);
-          selector = selector.split('.')[0]; // Just use the tag name part
-        }
-        
-        // Test if the selector is valid
-        await this.page.evaluate((sel) => {
-          try {
-            document.querySelector(sel);
-            return true;
-          } catch (e) {
-            return false;
-          }
-        }, selector);
-      } catch (e) {
-        console.warn(`⚠️ Invalid selector: ${selector}. Skipping.`);
-        return false;
-      }
-      
       let clickCount = 0;
-      let contentBefore = this.data.content ? this.data.content.length : 0;
+      let previousContentLength = this.data.content ? this.data.content.length : 0;
       
       while (clickCount < maxClicks) {
-        // Try to find and click the pagination button
-        const buttonVisible = await this.page.evaluate((selector) => {
-          try {
-            const button = document.querySelector(selector);
-            if (button && button.offsetParent !== null) {
-              // Check if button is visible in viewport
-              const rect = button.getBoundingClientRect();
-              return (
-                rect.top >= 0 &&
-                rect.left >= 0 &&
-                rect.bottom <= window.innerHeight &&
-                rect.right <= window.innerWidth
-              );
+        // Try to click the button - brute force, no detection
+        await this.page.evaluate((sel) => {
+          const buttons = document.querySelectorAll(sel);
+          if (buttons && buttons.length > 0) {
+            for (const button of buttons) {
+              try {
+                button.click();
+              } catch (e) {
+                // Ignore errors and try next button
+              }
             }
-            return false;
-          } catch (e) {
-            console.error('Error checking button visibility:', e);
-            return false;
           }
         }, selector);
         
-        if (!buttonVisible) {
-          // Scroll down to make button visible if needed
-          await this.page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
-          await this.safeWait(1000);
-        }
+        // Wait for content to load
+        await this.safeWait(DEFAULT_OPTIONS.scrollDelay);
         
-        // Try to click the button
-        const clicked = await this.page.evaluate((selector) => {
-          try {
-            const button = document.querySelector(selector);
-            if (button && !button.disabled && button.offsetParent !== null) {
-              button.click();
-              return true;
-            }
-            return false;
-          } catch (e) {
-            console.error('Error clicking button:', e);
-            return false;
-          }
-        }, selector);
-        
-        if (!clicked) {
-          console.log(`📜 No clickable button found for selector: ${selector}`);
-          return false;
-        }
-        
-        // Wait for new content to load
-        await this.safeWait(3000);
+        // Extract any new content
+        await this.extract();
         
         clickCount++;
-        console.log(`📜 Clicked pagination button ${clickCount}/${maxClicks} times`);
       }
       
-      const newContentItems = this.data.content ? this.data.content.length - contentBefore : 0;
-      if (newContentItems > 0) {
-        console.log(`✅ Added ${newContentItems} new content items from click pagination`);
-      }
+      // Check if we added any new content
+      const newContentItems = this.data.content ? 
+        this.data.content.length - previousContentLength : 0;
       
       return newContentItems > 0;
     } catch (error) {
-      console.error('Error handling click pagination:', error);
       return false;
     }
   }
 
   /**
-   * Handles URL-based pagination
+   * Handle URL-based pagination
    */
-  async handleUrlPagination(pattern, maxPages = 2) {
+  async handleUrlPagination(pattern, maxPages = DEFAULT_OPTIONS.pages) {
     try {
-      console.log(`🔄 Handling URL pagination, max pages: ${maxPages}`);
-      
-      const currentUrl = await this.page.url();
+      let currentUrl = this.page.url();
+      let baseUrl = currentUrl.split('?')[0].split('#')[0];
       let pageNumber = 1;
-      let contentBefore = this.data.content ? this.data.content.length : 0;
       
+      const previousContentLength = this.data.content ? this.data.content.length : 0;
+      
+      // Just try different page number patterns sequentially
       while (pageNumber < maxPages) {
         pageNumber++;
         
-        // Generate next page URL based on pattern or detection
-        let nextPageUrl;
+        // Try different URL patterns without detection
+        const patterns = [
+          `/page/${pageNumber}`,
+          `/p/${pageNumber}`,
+          `?page=${pageNumber}`,
+          `&page=${pageNumber}`,
+          `-${pageNumber}`,
+          `_${pageNumber}`,
+          `/${pageNumber}`
+        ];
         
-        if (pattern === 'query-param') {
-          // For URLs like example.com?page=1
-          const urlObj = new URL(currentUrl);
-          urlObj.searchParams.set('page', pageNumber.toString());
-          nextPageUrl = urlObj.toString();
-        } else if (pattern === 'path-segment') {
-          // For URLs like example.com/page/1
-          nextPageUrl = currentUrl.replace(/\/page\/\d+/, `/page/${pageNumber}`);
-          if (nextPageUrl === currentUrl) {
-            // If no replacement occurred, assume we need to add page
-            nextPageUrl = currentUrl.replace(/\/$/, '') + `/page/${pageNumber}`;
+        for (const pat of patterns) {
+          try {
+            // Try both appending to base and replacing numbers in current URL
+            let nextPageUrl = baseUrl + pat;
+            
+            // Go to next page
+            await this.page.goto(nextPageUrl, { waitUntil: 'networkidle2' });
+            await this.safeWait(DEFAULT_OPTIONS.scrollDelay);
+            
+            // Extract content
+            await this.extract();
+          } catch (e) {
+            // Ignore errors and try next pattern
+            continue;
           }
-        } else {
-          // Try to find pagination links and get next URL
-          const nextPageUrlFromLinks = await this.page.evaluate(() => {
-            const nextLinks = Array.from(document.querySelectorAll('.pagination a, .pager a, .page-numbers, [aria-label*="next"], [aria-label*="Next"], a[rel="next"]'));
-            for (const link of nextLinks) {
-              if (link.textContent.includes('Next') || link.textContent.includes('next') || 
-                  link.getAttribute('aria-label')?.includes('next') || 
-                  link.getAttribute('rel') === 'next') {
-                return link.href;
-              }
-            }
-            return null;
-          });
-          
-          if (!nextPageUrlFromLinks) {
-            console.log('📜 No next page URL found, stopping pagination');
-            break;
-          }
-          
-          nextPageUrl = nextPageUrlFromLinks;
         }
-        
-        console.log(`📜 Navigating to page ${pageNumber}: ${nextPageUrl}`);
-        
-        // Navigate to next page
-        await this.page.goto(nextPageUrl, { waitUntil: 'domcontentloaded' });
-        await this.safeWait(2000); // Wait for content to load
       }
       
-      const newContentItems = this.data.content ? this.data.content.length - contentBefore : 0;
-      if (newContentItems > 0) {
-        console.log(`✅ Added ${newContentItems} new content items from URL pagination`);
-      }
+      // Check if we added any new content
+      const newContentItems = this.data.content ? 
+        this.data.content.length - previousContentLength : 0;
       
       return newContentItems > 0;
     } catch (error) {
-      console.error('Error handling URL pagination:', error);
       return false;
     }
   }
@@ -2240,13 +2020,12 @@ class MainExtractor {
       
       return title;
     } catch (error) {
-      console.error('Error extracting title:', error);
       return '';
     }
   }
 
   /**
-   * Extract images from the page
+   * Extract all images from the page without filtering
    */
   async extractImages() {
     try {
@@ -2261,89 +2040,19 @@ class MainExtractor {
           }
         };
 
-        // Find content areas with images
-        const contentAreas = [
-          'article',
-          'main',
-          '[role="main"]',
-          '#content',
-          '.content',
-          '[class*="content"]',
-          'section',
-          '.post',
-          '.entry',
-          '.blog-post',
-          '[class*="article"]',
-          'figure',
-          '.gallery',
-          '[class*="gallery"]',
-          '[data-component-type="image-gallery"]',
-          '.product-images'
-        ];
+        // Get ALL images on the page without filtering
+        const imgElements = Array.from(document.querySelectorAll('img'));
         
-        // First try to get images from main content areas
-        let imgElements = [];
-        for (const selector of contentAreas) {
-          try {
-            const container = document.querySelector(selector);
-            if (container) {
-              const containerImgs = Array.from(container.querySelectorAll('img'));
-              if (containerImgs.length > 0) {
-                imgElements = [...imgElements, ...containerImgs];
-              }
-            }
-          } catch (e) {
-            // Continue to next selector
-          }
-        }
-        
-        // If no images found in content areas, get all images
-        if (imgElements.length === 0) {
-          imgElements = Array.from(document.querySelectorAll('img'));
-        }
-        
-        // Apply minimal filtering - just remove images without src and obvious tracking pixels
-        imgElements = imgElements.filter(img => {
-          // Skip images without src
-          if (!img.src) return false;
-          
-          // Skip tracking pixels (simple check)
-          if (img.src.includes('pixel') || img.src.includes('tracking')) return false;
-          
-          return true;
-        });
-        
-        // Extract image data
+        // Extract image data from all images
         return imgElements.map(img => {
-          // Find closest caption if available
-          const closestFigure = img.closest('figure');
-          const captionElement = closestFigure ? 
-            closestFigure.querySelector('figcaption') : null;
-          
-          // Get parent container for context
-          const article = img.closest('article');
-          const section = img.closest('section');
-          const container = img.closest('[class*="content"], [class*="article"], [id*="content"], [id*="article"]');
-          
-          // Determine context
-          let context = 'unknown';
-          if (article) context = 'article';
-          else if (section) context = section.id || section.className || 'section';
-          else if (container) context = container.id || container.className || 'content';
-          
-          // Build image object
           return {
-            url: toAbsoluteUrl(img.src),
+            url: toAbsoluteUrl(img.src || img.dataset.src || ''),
             alt: img.alt || '',
             title: img.title || '',
             width: img.width || 0,
-            height: img.height || 0,
-            caption: captionElement ? captionElement.textContent.trim() : '',
-            context: context.trim().replace(/\s+/g, ' ').substring(0, 100),
-            naturalWidth: img.naturalWidth || 0,
-            naturalHeight: img.naturalHeight || 0
+            height: img.height || 0
           };
-        });
+        }).filter(img => img.url); // Only filter out images without URLs
       });
       
       // Add unique images to the data
@@ -2355,10 +2064,9 @@ class MainExtractor {
       
       return this.data.images;
     } catch (error) {
-      console.warn(`Error extracting images: ${error.message}`);
       return [];
     }
   }
 }
 
-module.exports = { MainExtractor }; 
+module.exports = { MainExtractor };

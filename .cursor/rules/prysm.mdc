@@ -1,0 +1,32 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+VERY IMPORTANT!!!!! MAKE ABSOLUTELY SURE THAT EVERY SINGLE METHOD OF EVERY THING WE USE IS USED ON EVERY PAGE WE SCRAPE ALL THE TIME NO EXCEPTIONS NO THRESHHOLDS NO FILTERING NO ATTEMPTS AT DETECTION NO SITE OR STRUCTURE SPECIFIC ANYTHING. WE THROW EVERYTHING WE HAVE AT EVERY SITE - OK?
+
+DO NOT EVER ADD MORE LOGGING EVER NO EXCEPTIONS!!!!! SEE BELOW - THIS IS THE ONLY OUTPUT I WANT EVER!!!!!!
+
+MY OUTPUT:
+
+🚀 Starting Prysm scraper for https://www.cigarscanner.com/tabs/social/users/ebff7911-0be1-4e84-8211-ce7930a508d2
+
+⏳ Extracting content (this may take several minutes to complete)...
+.....................................................................................................................................................................................................................................
+
+📸 Found 41 images
+📥 Downloading images to /home/sizzlebop/Desktop/projects/prysm/scraper/results/www_cigarscanner_com_images_2025-04-03T01-29-03.914Z
+.....................
+✅ Downloaded 21 images (0 failed)
+
+✨ Scraping completed successfully!
+
+📊 Results Summary:
+=====================================
+📄 Title: Social
+📝 Content Items: 155
+📸 Images: 41
+
+💾 Results saved to:
+/home/sizzlebop/Desktop/projects/prysm/scraper/results/www_cigarscanner_com_tabs_social_users_ebff7911_0b_2025-04-03T01-29-05-191Z.json

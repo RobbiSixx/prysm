@@ -31,28 +31,22 @@ This will:
 
 ### Core Options
 
-| Option                      | Description                       | Default                  |
-| --------------------------- | --------------------------------- | ------------------------ |
-| `--pages <number>`          | Maximum number of pages to scrape | 5                        |
-| `--followLinks`             | Enable link following             | true                     |
-| `--noFollowLinks`           | Disable link following            | -                        |
-| `--linkSelector <selector>` | CSS selector for links to follow  | 'a'                      |
-| `--allDomains`              | Follow links to any domain        | false (same domain only) |
+| Option                | Description                       | Default                  |
+| --------------------- | --------------------------------- | ------------------------ |
+| `--pages <number>`    | Maximum number of pages to scrape | 5                        |
+| `--followLinks`       | Enable link following             | true                     |
+| `--noFollowLinks`     | Disable link following            | -                        |
+| `--allDomains`        | Follow links to any domain        | false (same domain only) |
 
 ### Scraping Options
 
-| Option                            | Description                                    | Default         |
-| --------------------------------- | ---------------------------------------------- | --------------- |
-| `--maxScrolls <number>`           | Maximum scroll attempts per page               | 5               |
-| `--scrollDelay <ms>`              | Delay between scrolls in ms                    | 2000            |
-| `--bypassCloudflare`              | Enable Cloudflare bypass                       | true            |
-| `--noBypassCloudflare`            | Disable Cloudflare bypass                      | -               |
-| `--handlePagination`              | Enable auto pagination                         | true            |
-| `--noHandlePagination`            | Disable auto pagination                        | -               |
-| `--paginationStrategy <strategy>` | Force pagination strategy (infinite/click/url) | null (auto)     |
-| `--headless`                      | Run in headless mode                           | true            |
-| `--noHeadless`                    | Run with browser visible                       | -               |
-| `--output <path>`                 | Custom output path for results                 | ./results/multi |
+| Option                  | Description                      | Default         |
+| ----------------------- | -------------------------------- | --------------- |
+| `--maxScrolls <number>` | Maximum scroll attempts per page | 100             |
+| `--scrollDelay <ms>`    | Delay between scrolls in ms      | 2000            |
+| `--headless`            | Run in headless mode             | true            |
+| `--noHeadless`          | Run with browser visible         | -               |
+| `--output <path>`       | Custom output path for results   | ./results/multi |
 
 ## Examples
 

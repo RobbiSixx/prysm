@@ -19,13 +19,8 @@ if (args.length === 0 || args.includes('--help')) {
 Usage: node scrape.js [url] [options]
 
 Options:
-  --maxScrolls <number>    Maximum scroll attempts (default: 5)
+  --maxScrolls <number>    Maximum scroll attempts (default: 100)
   --scrollDelay <ms>       Delay between scrolls in ms (default: 2000)
-  --bypassCloudflare       Enable Cloudflare bypass (default: true)
-  --noBypassCloudflare     Disable Cloudflare bypass
-  --handlePagination       Enable auto pagination (default: true)
-  --noHandlePagination     Disable auto pagination
-  --paginationStrategy     Force pagination strategy (infinite/click/url)
   --headless               Run in headless mode (default: true)
   --noHeadless             Run with browser visible
   --output <path>          Custom output path for results
