@@ -2,7 +2,12 @@
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const { setupResourceBlocker } = require('./utils/resourceBlocker');
-const { InfiniteScrollStrategy, ClickPaginationStrategy, URLPaginationStrategy } = require('./utils/paginationStrategies');
+const { 
+  InfiniteScrollStrategy, 
+  ClickPaginationStrategy, 
+  URLPaginationStrategy,
+  URLParameterPaginationStrategy 
+} = require('./utils/paginationStrategies');
 const { MainExtractor } = require('./utils/mainExtractor');
 const { sleep, waitForSelector } = require('./utils/helpers');
 const cloudflareBypass = require('./utils/cloudflareBypass');
@@ -10,9 +15,48 @@ const { extractImages, downloadImage } = require('./utils/imageExtractor');
 const fs = require('fs').promises;
 const path = require('path');
 const { URL } = require('url');
+const chalk = require('chalk');
+const packageJson = require('./package.json');
 
 // Initialize stealth mode
 puppeteer.use(StealthPlugin());
+
+/**
+ * Generate a colorful ASCII banner
+ */
+function generateBanner() {
+  const colors = [
+    chalk.magentaBright,
+    chalk.magenta,
+    chalk.blueBright,
+    chalk.blue,
+    chalk.cyanBright,
+    chalk.cyan,
+  ];
+  
+  const banner = `
+   ██████╗ ██████╗ ██╗   ██╗███████╗███╗   ███╗
+   ██╔══██╗██╔══██╗╚██╗ ██╔╝██╔════╝████╗ ████║
+   ██████╔╝██████╔╝ ╚████╔╝ ███████╗██╔████╔██║
+   ██╔═══╝ ██╔══██╗  ╚██╔╝  ╚════██║██║╚██╔╝██║
+   ██║     ██║  ██║   ██║   ███████║██║ ╚═╝ ██║
+   ╚═╝     ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝     ╚═╝
+  `;
+  
+  // Split banner into lines and apply different colors
+  const lines = banner.split('\n');
+  let colorfulBanner = '';
+  
+  for (let i = 0; i < lines.length; i++) {
+    colorfulBanner += colors[i % colors.length](lines[i]) + '\n';
+  }
+  
+  // Add package info
+  colorfulBanner += '\n';
+  colorfulBanner += chalk.cyanBright('  ✨ ') + chalk.greenBright(`${packageJson.name}`) + chalk.whiteBright(' v') + chalk.yellowBright(`${packageJson.version}`) + '\n';
+  
+  return colorfulBanner;
+}
 
 /**
  * Parse command line arguments
@@ -66,7 +110,7 @@ function parseArguments(args) {
           options.handlePagination = false;
           break;
         case '--paginationStrategy':
-          if (['infinite', 'click', 'url'].includes(value)) {
+          if (['infinite', 'click', 'url', 'parameter'].includes(value)) {
             options.paginationStrategy = value;
           }
           i++;
@@ -137,39 +181,42 @@ function parseArguments(args) {
  * Show help message
  */
 function showHelp() {
+  console.log(generateBanner());
   console.log(`
-🔍 Prysm - Structure-Aware Web Scraper
+${chalk.cyanBright('🔍')} ${chalk.bold('Prysm - Structure-Aware Web Scraper')}
 
-Usage: npm run start:cli [url] [options]
+${chalk.whiteBright('Usage:')} ${chalk.greenBright('npm run start:cli')} ${chalk.yellowBright('[url]')} ${chalk.blueBright('[options]')}
 
-Options:
-  --pages <number>        Maximum number of pages to scrape (default: 1)
-  --followLinks           Enable link following (required for multi-page scraping)
-  --noFollowLinks         Disable link following
-  --linkSelector <selector> CSS selector for links to follow (default: 'a')
-  --allDomains            Follow links to any domain (default: same domain only)
-  --maxScrolls <number>   Maximum scroll attempts (default: 50)
-  --scrollDelay <ms>      Delay between scrolls in ms (default: 1000)
-  --bypassCloudflare      Enable Cloudflare bypass (default: true)
-  --noBypassCloudflare    Disable Cloudflare bypass
-  --handlePagination      Enable auto pagination (default: true)
-  --noHandlePagination    Disable auto pagination
-  --paginationStrategy    Force pagination strategy (infinite/click/url)
-  --headless              Run in headless mode (default: true)
-  --noHeadless            Run with browser visible
-  --output <path>         Custom output path for results
-  --scrapeImages          Enable image scraping (default: false)
-  --noScrapeImages        Disable image scraping
-  --downloadImages        Download images locally (enables scrapeImages)
-  --maxImages <number>    Maximum images to extract per page (default: 100)
-  --minImageSize <pixels> Minimum width/height for images (default: 100)
-  --help                  Show this help message
+${chalk.whiteBright('Options:')}
+  ${chalk.yellowBright('--pages <number>')}        Maximum number of pages to scrape (default: 1)
+  ${chalk.yellowBright('--followLinks')}           Enable link following (required for multi-page scraping)
+  ${chalk.yellowBright('--noFollowLinks')}         Disable link following
+  ${chalk.yellowBright('--linkSelector <selector>')} CSS selector for links to follow (default: 'a')
+  ${chalk.yellowBright('--allDomains')}            Follow links to any domain (default: same domain only)
+  ${chalk.yellowBright('--maxScrolls <number>')}   Maximum scroll attempts (default: 100)
+  ${chalk.yellowBright('--scrollDelay <ms>')}      Delay between scrolls in ms (default: 1000)
+  ${chalk.yellowBright('--bypassCloudflare')}      Enable Cloudflare bypass (default: true)
+  ${chalk.yellowBright('--noBypassCloudflare')}    Disable Cloudflare bypass
+  ${chalk.yellowBright('--handlePagination')}      Enable auto pagination (default: true)
+  ${chalk.yellowBright('--noHandlePagination')}    Disable auto pagination
+  ${chalk.yellowBright('--paginationStrategy')}    Force pagination strategy (infinite/click/url/parameter)
+                          'parameter' is for sites using URL-based pagination like ?page=X
+  ${chalk.yellowBright('--headless')}              Run in headless mode (default: true)
+  ${chalk.yellowBright('--noHeadless')}            Run with browser visible
+  ${chalk.yellowBright('--output <path>')}         Custom output path for results
+  ${chalk.yellowBright('--scrapeImages')}          Enable image scraping (default: false)
+  ${chalk.yellowBright('--noScrapeImages')}        Disable image scraping
+  ${chalk.yellowBright('--downloadImages')}        Download images locally (enables scrapeImages)
+  ${chalk.yellowBright('--maxImages <number>')}    Maximum images to extract per page (default: 100)
+  ${chalk.yellowBright('--minImageSize <pixels>')} Minimum width/height for images (default: 100)
+  ${chalk.yellowBright('--help')}                  Show this help message
 
-Examples:
-  npm run start:cli "https://example.com"
-  npm run start:cli "https://example.com" --pages 5
-  npm run start:cli "https://example.com" --maxScrolls 50 --noHeadless
-  npm run start:cli "https://example.com" --scrapeImages --downloadImages
+${chalk.whiteBright('Examples:')}
+  ${chalk.greenBright('npm run start:cli')} ${chalk.yellowBright('"https://example.com"')}
+  ${chalk.greenBright('npm run start:cli')} ${chalk.yellowBright('"https://example.com"')} ${chalk.blueBright('--pages 5')}
+  ${chalk.greenBright('npm run start:cli')} ${chalk.yellowBright('"https://example.com"')} ${chalk.blueBright('--maxScrolls 50 --noHeadless')}
+  ${chalk.greenBright('npm run start:cli')} ${chalk.yellowBright('"https://example.com"')} ${chalk.blueBright('--scrapeImages --downloadImages')}
+  ${chalk.greenBright('npm run start:cli')} ${chalk.yellowBright('"https://example.com/users/profile"')} ${chalk.blueBright('--paginationStrategy parameter')}
 `);
 }
 
@@ -264,8 +311,19 @@ async function singlePageScrape(url, options = {}) {
   let browser;
   let page;
   let progressInterval;
+  let dotColorIndex = 0;
+  const dotColors = [
+    chalk.magentaBright,
+    chalk.blueBright,
+    chalk.greenBright,
+    chalk.cyanBright,
+    chalk.yellowBright
+  ];
   
   try {
+    // Display the banner at the start
+    console.log(generateBanner());
+    
     // Browser launch and setup
     const browserOptions = cloudflareBypass.getBrowserLaunchArgs();
     browserOptions.headless = headless;
@@ -274,7 +332,7 @@ async function singlePageScrape(url, options = {}) {
       browserOptions.args.push(`--proxy-server=${proxy}`);
     }
 
-    console.log(`🚀 Starting Prysm scraper for ${url}`);
+    console.log(`${chalk.magentaBright('🚀')} ${chalk.whiteBright('Starting Prysm scraper for')} ${chalk.cyanBright(url)}`);
     browser = await puppeteer.launch(browserOptions);
 
     // Navigation with Cloudflare bypass if enabled
@@ -320,17 +378,18 @@ async function singlePageScrape(url, options = {}) {
       extractor.handlePagination = async () => false;
     }
     
-    console.log(`\n⏳ Extracting content (this may take several minutes to complete)...`);
+    console.log(`\n${chalk.yellowBright('⏳')} ${chalk.whiteBright('Extracting content (this may take several minutes to complete)...')}`);
     
-    // Create a simple progress indicator
+    // Create a simple progress indicator with cycling colors
     progressInterval = setInterval(() => {
-      process.stdout.write('.');
+      process.stdout.write(dotColors[dotColorIndex % dotColors.length]('.'));
+      dotColorIndex++;
     }, 1000);
     
     // First extraction before pagination
     await extractor.extract();
-    
-    // Handle pagination based on strategy if specified before extraction
+
+    // Handle pagination based on strategy if specified
     if (handlePagination) {
       // Create pagination options
       const paginationOptions = {
@@ -340,14 +399,46 @@ async function singlePageScrape(url, options = {}) {
         waitForSelector: waitForSelector
       };
       
-      // Set up and run scroll strategies
-      const infiniteScroll = await setupInfiniteScroll(page, paginationOptions);
-      await infiniteScroll.paginate();
+      // Try URL parameter pagination first (for sites using page parameters)
+      let paginationSuccess = false;
       
-      // Extract content again after all scroll strategies
-      await extractor.extract();
+      if (!paginationSuccess && (!paginationStrategy || paginationStrategy === 'parameter')) {
+        const isApplicable = await URLParameterPaginationStrategy.isApplicable(page, url);
+        if (isApplicable) {
+          const paramStrategy = new URLParameterPaginationStrategy(page, {
+            maxScrollsPerPage: maxScrolls,
+            scrollDelay: scrollDelay,
+            maxPages: options.pages || 15,
+            contentVerificationSelector: 'article, .post, [class*="post"], [class*="content"], [class*="feed"]'
+          });
+          
+          if (await paramStrategy.initialize(url)) {
+            let paginationCount = 0;
+            while (paginationCount < (options.pages || 15)) {
+              // Move to next page
+              const hasNext = await paramStrategy.next();
+              if (!hasNext) break;
+              
+              // Extract content on current page
+              await extractor.extract();
+              paginationCount++;
+            }
+            paginationSuccess = paginationCount > 0;
+          }
+        }
+      }
+      
+      // If parameter pagination didn't work, try the standard methods
+      if (!paginationSuccess) {
+        // Set up and run scroll strategies
+        const infiniteScroll = await setupInfiniteScroll(page, paginationOptions);
+        await infiniteScroll.paginate();
+        
+        // Extract content again after all scroll strategies
+        await extractor.extract();
+      }
     }
-    
+
     // Clear the progress indicator
     clearInterval(progressInterval);
     process.stdout.write('\n\n');
@@ -361,7 +452,7 @@ async function singlePageScrape(url, options = {}) {
 
     // Process images if scraping is enabled
     if (options.scrapeImages && result.images && result.images.length > 0) {
-      console.log(`📸 Found ${result.images.length} images`);
+      console.log(`${chalk.magentaBright('📸')} ${chalk.whiteBright(`Found ${result.images.length} images`)}`);
       
       // Download images if the option is enabled
       if (options.downloadImages) {
@@ -369,19 +460,25 @@ async function singlePageScrape(url, options = {}) {
         const timestamp = new Date().toISOString().replace(/:/g, '-');
         const imageDir = path.join(options.output, `${safeHostname}_images_${timestamp}`);
         
-        console.log(`📥 Downloading images to ${imageDir}`);
+        console.log(`${chalk.blueBright('📥')} ${chalk.whiteBright(`Downloading images to ${imageDir}`)}`);
         
         // Download images in parallel with a concurrency limit
         const concurrencyLimit = 5;
         const chunks = [];
         
         // Split images into chunks for parallel download
-        for (let i = 0; i < result.images.length; i += concurrencyLimit) {
-          chunks.push(result.images.slice(i, i + concurrencyLimit));
+        // Use unique images to avoid downloading duplicates
+        const uniqueImages = result.images.filter((img, index) => {
+          return result.images.findIndex(i => i.url === img.url) === index;
+        });
+        
+        for (let i = 0; i < uniqueImages.length; i += concurrencyLimit) {
+          chunks.push(uniqueImages.slice(i, i + concurrencyLimit));
         }
         
         let downloadedCount = 0;
         let failedCount = 0;
+        dotColorIndex = 0;
         
         // Process chunks sequentially to control concurrency
         for (const chunk of chunks) {
@@ -393,14 +490,15 @@ async function singlePageScrape(url, options = {}) {
                 // Add local path to the image object
                 image.localPath = imagePath.replace(options.output, '').replace(/^\//, '');
                 downloadedCount++;
-                process.stdout.write('.');
+                process.stdout.write(dotColors[dotColorIndex % dotColors.length]('.'));
+                dotColorIndex++;
               } else {
                 failedCount++;
-                process.stdout.write('x');
+                process.stdout.write(chalk.red('x'));
               }
             } catch (error) {
               failedCount++;
-              process.stdout.write('x');
+              process.stdout.write(chalk.red('x'));
             }
           });
           
@@ -408,7 +506,7 @@ async function singlePageScrape(url, options = {}) {
           await Promise.all(downloadPromises);
         }
         
-        console.log(`\n✅ Downloaded ${downloadedCount} images (${failedCount} failed)`);
+        console.log(`\n${chalk.greenBright('✅')} ${chalk.whiteBright(`Downloaded ${downloadedCount} images (${failedCount} failed)`)}`);
       }
     }
 
@@ -433,12 +531,22 @@ async function singlePageScrape(url, options = {}) {
       }
     }, null, 2));
 
+    console.log(`\n${chalk.blueBright('📊')} ${chalk.whiteBright('Results Summary:')}`);
+    console.log(`${chalk.cyanBright('=====================================')}`);
+    console.log(`${chalk.magentaBright('📄')} ${chalk.whiteBright(`Title: ${result.title}`)}`);
+    console.log(`${chalk.magentaBright('📝')} ${chalk.whiteBright(`Content Items: ${result.content.length}`)}`);
+    console.log(`${chalk.magentaBright('📸')} ${chalk.whiteBright(`Images: ${result.images.length}`)}`);
+    
+    console.log(`\n${chalk.yellowBright('💾')} ${chalk.whiteBright('Results saved to:')}`);
+    console.log(chalk.greenBright(outputFile));
+    console.log(`${chalk.cyanBright('=====================================')}`);
+
     return result;
 
   } catch (error) {
     // Clear the progress indicator if there's an error
     if (progressInterval) clearInterval(progressInterval);
-    console.error(`❌ Error during scraping:`, error);
+    console.error(`${chalk.redBright('❌')} ${chalk.whiteBright('Error during scraping:')}`, error);
     throw error;
   } finally {
     if (browser) {
@@ -642,6 +750,105 @@ async function handleManualPagination(page, strategyType, options) {
   }
 }
 
+/**
+ * Attempts to paginate through the site
+ */
+async function attemptPagination(page, url, options) {
+  if (!options.handlePagination) {
+    return 1; // Pagination not requested
+  }
+  
+  try {
+    // If no pagination strategy is specified, try to auto-detect
+    let strategy = options.paginationStrategy;
+    
+    // First check if URLParameterPaginationStrategy is applicable
+    if (!strategy && await URLParameterPaginationStrategy.isApplicable(page, url)) {
+      console.log('🔍 Auto-detected URL parameter pagination strategy');
+      strategy = 'parameter';
+    }
+    
+    // Create pagination strategy instance based on detected or specified strategy
+    let paginationStrategy;
+    let maxPages = options.pages || 1;
+    
+    if (strategy === 'infinite') {
+      console.log('📃 Using infinite scroll pagination strategy');
+      paginationStrategy = new InfiniteScrollStrategy(page, {
+        maxAttempts: maxPages * 10,
+        delay: options.scrollDelay || 1000
+      });
+    } else if (strategy === 'click') {
+      console.log('🖱️ Using click pagination strategy');
+      paginationStrategy = new ClickPaginationStrategy(page, {
+        maxAttempts: maxPages,
+        delay: options.scrollDelay || 1000,
+        buttonSelector: options.paginationSelector || 'button.load-more, .pagination a, a.next, button.show-more, .more-link'
+      });
+    } else if (strategy === 'url') {
+      console.log('🔗 Using URL pagination strategy');
+      paginationStrategy = new URLPaginationStrategy(page, {
+        maxAttempts: maxPages,
+        delay: options.scrollDelay || 1000,
+        baseUrl: url,
+        urlPattern: options.urlPattern || '/page/{num}'
+      });
+    } else if (strategy === 'parameter') {
+      console.log('🔄 Using URL parameter pagination strategy');
+      
+      // Create and initialize the URL parameter pagination strategy
+      const paramStrategy = new URLParameterPaginationStrategy(page, {
+        maxScrollsPerPage: 30,
+        scrollDelay: options.scrollDelay || 2000,
+        maxPages: maxPages,
+        pageParameter: options.pageParameter || 'page',
+        waitForSelector: options.contentSelector || 'article, .post, .entry, .item, .product',
+        contentVerificationSelector: options.contentSelector || 'article, .post, .entry, .item, .product, img'
+      });
+      
+      await paramStrategy.initialize(url);
+      
+      // Paginate through all pages
+      let pagesProcessed = 1;
+      let hasMorePages = true;
+      
+      // Process the first page (already loaded)
+      console.log('📄 Processing page 1...');
+      
+      // Scroll the first page to ensure all content is loaded
+      await paramStrategy.scrollCurrentPage();
+      
+      // Process subsequent pages
+      while (pagesProcessed < maxPages && hasMorePages) {
+        hasMorePages = await paramStrategy.next();
+        if (hasMorePages) {
+          pagesProcessed++;
+          console.log(`📄 Processing page ${pagesProcessed}...`);
+        }
+      }
+      
+      return pagesProcessed;
+    } else {
+      // Default: basic infinite scroll
+      console.log('📜 Using default scroll strategy (no pagination)');
+      paginationStrategy = new InfiniteScrollStrategy(page, {
+        maxAttempts: maxPages * 3,
+        delay: options.scrollDelay || 1000
+      });
+    }
+    
+    // Only process standard strategies if not using parameter strategy
+    if (strategy !== 'parameter') {
+      await paginationStrategy.paginate();
+    }
+    
+    return maxPages;
+  } catch (error) {
+    console.error(`⚠️ Error during pagination: ${error.message}`);
+    return 1;
+  }
+}
+
 // If running from command line
 if (require.main === module) {
   const args = process.argv.slice(2);
@@ -654,7 +861,7 @@ if (require.main === module) {
   const { url, options } = parseArguments(args);
 
   if (!url) {
-    console.error('❌ Error: URL is required');
+    console.error(`${chalk.redBright('❌')} ${chalk.whiteBright('Error: URL is required')}`);
     showHelp();
     process.exit(1);
   }
@@ -663,7 +870,7 @@ if (require.main === module) {
   fs.mkdir(options.output, { recursive: true })
     .then(async () => {
       if (options.pages > 1) {
-        console.log(`📑 Multi-page mode: Will scrape up to ${options.pages} pages`);
+        console.log(`${chalk.blueBright('📑')} ${chalk.whiteBright(`Multi-page mode: Will scrape up to ${options.pages} pages`)}`);
       }
       
       try {
@@ -672,8 +879,8 @@ if (require.main === module) {
         // If it's a multi-page result, the format is different
         if (result.multiPageResults) {
           // Main page result is already saved by the multi-page scraper
-          console.log(`\n✨ Multi-page scraping completed successfully!`);
-          console.log(`📊 Scraped ${result.multiPageResults.length} pages in total`);
+          console.log(`\n${chalk.greenBright('✨')} ${chalk.whiteBright('Multi-page scraping completed successfully!')}`);
+          console.log(`${chalk.blueBright('📊')} ${chalk.whiteBright(`Scraped ${result.multiPageResults.length} pages in total`)}`);
         } else {
           // Single page result
           // Create a safe filename from the URL
@@ -692,28 +899,20 @@ if (require.main === module) {
             result
           }, null, 2));
           
-          console.log('\n✨ Scraping completed successfully!');
-          console.log(`\n📊 Results Summary:`);
-          console.log(`=====================================`);
-          console.log(`📄 Title: ${result.title}`);
-          console.log(`📝 Content Items: ${result.content.length}`);
-          console.log(`📸 Images: ${result.images.length}`);
-          console.log(`\n💾 Results saved to:`);
-          console.log(outputFile);
-          console.log(`=====================================`);
+          console.log(`\n${chalk.greenBright('✨')} ${chalk.whiteBright('Scraping completed successfully!')}`);
         }
         
       } catch (error) {
-        console.error('\n❌ Error during scraping:');
-        console.error('=====================================');
-        if (error.message) console.error(error.message);
-        if (error.stack) console.error(error.stack);
-        console.error('=====================================');
+        console.error(`\n${chalk.redBright('❌')} ${chalk.whiteBright('Error during scraping:')}`);
+        console.error(chalk.redBright('====================================='));
+        if (error.message) console.error(chalk.red(error.message));
+        if (error.stack) console.error(chalk.red(error.stack));
+        console.error(chalk.redBright('====================================='));
         process.exit(1);
       }
     })
     .catch(error => {
-      console.error('\n❌ Error creating output directory:', error);
+      console.error(`\n${chalk.redBright('❌')} ${chalk.whiteBright('Error creating output directory:')}`, error);
       process.exit(1);
     });
 }

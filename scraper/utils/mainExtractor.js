@@ -2302,19 +2302,13 @@ class MainExtractor {
           imgElements = Array.from(document.querySelectorAll('img'));
         }
         
-        // Filter out small images (likely icons) and tracking pixels
+        // Apply minimal filtering - just remove images without src and obvious tracking pixels
         imgElements = imgElements.filter(img => {
           // Skip images without src
           if (!img.src) return false;
           
-          // Skip tiny images (likely icons or tracking pixels)
-          if (img.width < 100 || img.height < 100) return false;
-          
-          // Skip tracking pixels
-          const trackingPatterns = ['pixel', 'tracker', 'tracking', 'analytics', 'beacon', '1x1'];
-          if (trackingPatterns.some(pattern => img.src.toLowerCase().includes(pattern))) {
-            return false;
-          }
+          // Skip tracking pixels (simple check)
+          if (img.src.includes('pixel') || img.src.includes('tracking')) return false;
           
           return true;
         });

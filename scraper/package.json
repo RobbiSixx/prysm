@@ -1,6 +1,6 @@
 {
   "name": "@pinkpixel/prysm-scraper",
-  "version": "1.2.0",
+  "version": "1.3.1",
   "description": "Structure-aware web scraping tool with REST API support",
   "main": "main_scraper.js",
   "scripts": {
@@ -12,6 +12,7 @@
     "scrape": "node main_scraper.js"
   },
   "dependencies": {
+    "chalk": "^4.1.2",
     "express": "^4.18.2",
     "puppeteer": "^22.15.0",
     "puppeteer-extra": "^3.3.6",

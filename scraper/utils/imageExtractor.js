@@ -2,7 +2,8 @@
  * Image Extractor - Utility for extracting and processing images from web pages
  */
 
-const fs = require('fs').promises;
+const fsPromises = require('fs').promises;
+const fs = require('fs'); // Add standard fs module
 const path = require('path');
 const https = require('https');
 const http = require('http');
@@ -109,7 +110,7 @@ async function extractImages(page, options = {}) {
 async function downloadImage(imageUrl, outputDir, filename = null) {
   try {
     // Create the output directory if it doesn't exist
-    await fs.mkdir(outputDir, { recursive: true });
+    await fsPromises.mkdir(outputDir, { recursive: true });
     
     // Generate a filename if not provided
     if (!filename) {
@@ -147,7 +148,7 @@ async function downloadImage(imageUrl, outputDir, filename = null) {
         });
         
         file.on('error', (err) => {
-          fs.unlink(outputPath).catch(() => {}); // Delete the file if there was an error
+          fs.unlink(outputPath, () => {}); // Delete the file if there was an error, ignore unlink errors
           reject(err);
         });
       });

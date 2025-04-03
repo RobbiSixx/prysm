@@ -2,6 +2,54 @@
 
 All notable changes to the Prysm scraper will be documented in this file.
 
+## [1.3.3] - 2024-04-03
+
+### Added
+
+- 🧪 Added comprehensive test script with category and name-based filtering
+- 🌈 Enhanced test runner with detailed results reporting and summaries
+- 📊 Added JSON summary files for test runs with timestamp and statistics
+
+### Improved
+
+- 🎨 Enhanced CLI UI with additional colors and visual formatting
+- 📋 Improved error handling and reporting in test scripts
+- 👁️ Added more visual feedback during image extraction and downloading
+
+## [1.3.2] - 2024-04-03
+
+### Added
+
+- 🎨 Added beautiful multicolored ASCII banner to the CLI interface
+- 🌈 Enhanced terminal output with colored text and multicolored progress indicators
+- ✨ Added package version and branding display in CLI
+
+### Fixed
+
+- 🖼️ Fixed image downloading functionality by correcting fs module usage
+- 📊 Added duplicate image detection to avoid downloading the same image multiple times
+- 🔢 Improved image count accuracy between reported and actual downloaded images
+
+## [1.3.1] - 2024-04-04
+
+### Changed
+
+- ⚙️ Relaxed strict filtering thresholds in content verification
+- 🔄 Enhanced URL Parameter pagination with more reliable content loading
+- 🖼️ Improved image extraction for sites with lazy-loaded images
+- 🚀 Increased default scroll limits for better content capture
+- 🧠 Added multiple events to trigger lazy-loading (mousemove, DOMContentLoaded, custom events)
+- ⏱️ Improved timing delays for better content loading
+
+## [1.3.0] - 2024-04-03
+
+### Added
+
+- 📄 Added URL Parameter pagination strategy for sites like CigarScanner
+- 🔄 Implemented hybrid pagination approach that combines URL parameters with scrolling
+- 🧠 Automatic detection of sites that use URL-based pagination (?page=X)
+- 🛠️ Added `parameter` option to `--paginationStrategy` flag
+
 ## [1.2.0] - 2024-04-03
 
 ### Added

@@ -66,6 +66,9 @@ npm run start:cli "https://example.com" --scrapeImages
 
 # Scrape and download images
 npm run start:cli "https://example.com" --downloadImages --maxImages 50 --minImageSize 200
+
+# Use URL parameter pagination for sites like social media profiles
+npm run start:cli "https://example.com/user/profile" --paginationStrategy parameter
 ```
 
 ### CLI Options
@@ -77,7 +80,11 @@ npm run start:cli "https://example.com" --downloadImages --maxImages 50 --minIma
 - `--scrollDelay <ms>` - Delay between scrolls in ms (default: 1000)
 - `--bypassCloudflare` - Enable Cloudflare bypass (default: true)
 - `--handlePagination` - Auto-handle pagination (default: true)
-- `--paginationStrategy <strategy>` - Force pagination strategy (infinite/click/url)
+- `--paginationStrategy <strategy>` - Force pagination strategy (infinite/click/url/parameter)
+  - `infinite`: For endless scrolling pages
+  - `click`: For "Load More" button-based pagination
+  - `url`: For numbered page navigation
+  - `parameter`: For URL parameter-based pagination (e.g. ?page=2) with dynamic content loading
 - `--headless` - Run in headless mode (default: true)
 - `--noHeadless` - Run with browser visible
 - `--output <path>` - Custom output path for results

@@ -431,8 +431,220 @@ class URLPaginationStrategy extends PaginationStrategy {
     }
 }
 
+/**
+ * URL Parameter Pagination Strategy
+ * 
+ * Uses URL parameters like ?page=X to navigate through pages
+ * while also scrolling within each page to load dynamic content.
+ * This is especially useful for sites that use a hybrid pagination approach.
+ */
+class URLParameterPaginationStrategy {
+  constructor(page, options = {}) {
+    this.page = page;
+    this.options = {
+      maxScrollsPerPage: 30,
+      scrollDelay: 2000,
+      maxPages: 30,
+      pageParameter: 'page',
+      waitForSelector: null,
+      contentVerificationSelector: null,
+      ...options
+    };
+    this.currentPage = 1;
+    this.baseUrl = '';
+    this.lastHeight = -1;
+    this.consecutiveUnchanged = 0;
+  }
+
+  /**
+   * Initialize pagination with base URL
+   */
+  async initialize(url) {
+    this.baseUrl = url;
+    this.currentPage = 1;
+    return true;
+  }
+
+  /**
+   * Constructs the URL for the current page
+   */
+  getPageUrl() {
+    const separator = this.baseUrl.includes('?') ? '&' : '?';
+    return `${this.baseUrl}${separator}${this.options.pageParameter}=${this.currentPage}`;
+  }
+
+  /**
+   * Verifies if content exists on the current page
+   * Simplified to be less strict with basic existence check
+   */
+  async verifyContent() {
+    if (!this.options.contentVerificationSelector) {
+      return true; // No selector provided, assume content exists
+    }
+    
+    try {
+      // Simple content check - just count elements
+      const contentCount = await this.page.$$eval(
+        this.options.contentVerificationSelector,
+        elements => elements.length
+      );
+      
+      return contentCount > 0;
+    } catch (error) {
+      // In case of error, assume content exists
+      return true;
+    }
+  }
+
+  /**
+   * Scrolls within the current page to load all dynamic content
+   * Enhanced for better content loading
+   */
+  async scrollCurrentPage() {
+    this.lastHeight = -1;
+    this.consecutiveUnchanged = 0;
+    
+    // Initial pause to let the page load
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    for (let i = 0; i < this.options.maxScrollsPerPage; i++) {
+      // Get the current scroll height
+      const newHeight = await this.page.evaluate('document.body.scrollHeight');
+      
+      // Scroll to the bottom
+      await this.page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
+      
+      // Wait for dynamic content to load
+      await new Promise(resolve => setTimeout(resolve, this.options.scrollDelay));
+      
+      // Try multiple events to trigger lazy loading
+      await this.page.evaluate(() => {
+        // Dispatch both scroll and resize events
+        window.dispatchEvent(new Event('scroll'));
+        window.dispatchEvent(new Event('resize'));
+        
+        // Additional events that might trigger content loading
+        window.dispatchEvent(new MouseEvent('mousemove'));
+        window.dispatchEvent(new Event('DOMContentLoaded'));
+        
+        // Some sites use custom events for lazy loading
+        try {
+          window.dispatchEvent(new CustomEvent('lazyload'));
+          window.dispatchEvent(new CustomEvent('load-more'));
+        } catch (e) {
+          // Ignore errors with custom events
+        }
+      });
+      
+      // Check if the height has changed
+      if (newHeight === this.lastHeight) {
+        this.consecutiveUnchanged++;
+        if (this.consecutiveUnchanged >= 5) { // Reduced from 10 to avoid early termination
+          break;
+        }
+      } else {
+        this.consecutiveUnchanged = 0;
+        this.lastHeight = newHeight;
+      }
+    }
+    
+    // Give a little extra time for final content to load
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    return true;
+  }
+
+  /**
+   * Move to the next page
+   */
+  async next() {
+    // First scroll within the current page to load all content
+    await this.scrollCurrentPage();
+    
+    // Move to the next page number
+    this.currentPage++;
+    
+    // Check if we've reached the maximum number of pages
+    if (this.currentPage > this.options.maxPages) {
+      return false;
+    }
+    
+    // Navigate to the new page URL
+    const nextPageUrl = this.getPageUrl();
+    
+    try {
+      await this.page.goto(nextPageUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+      
+      // Wait for the specified selector if provided
+      if (this.options.waitForSelector) {
+        await this.page.waitForSelector(this.options.waitForSelector, { 
+          visible: true, 
+          timeout: 30000 
+        });
+      }
+      
+      // Verify content exists on this page
+      const hasContent = await this.verifyContent();
+      if (!hasContent) {
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Check if the strategy is applicable for the current page
+   */
+  static async isApplicable(page, url) {
+    // Check if the page URL has a typical structure that might support this
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    
+    // Sites/URL patterns that often use this pagination pattern
+    const knownPatterns = [
+      'social',
+      'profile',
+      'users',
+      'gallery',
+      'feed',
+      'blog',
+      'community'
+    ];
+    
+    // Check if the URL matches any known patterns
+    const matchesKnownPattern = knownPatterns.some(pattern => 
+      url.toLowerCase().includes(pattern)
+    );
+    
+    if (matchesKnownPattern) {
+      return true;
+    }
+    
+    // Try to detect if there are page navigation links
+    try {
+      const hasPaginationLinks = await page.evaluate(() => {
+        const links = Array.from(document.querySelectorAll('a'));
+        return links.some(link => {
+          const href = link.href || '';
+          return href.includes('page=') || 
+                 href.match(/[?&]p=\d+/) ||
+                 link.textContent?.match(/\d+/) ||
+                 link.getAttribute('aria-label')?.includes('page');
+        });
+      });
+      
+      return hasPaginationLinks;
+    } catch (error) {
+      return false;
+    }
+  }
+}
+
 module.exports = {
     InfiniteScrollStrategy,
     ClickPaginationStrategy,
-    URLPaginationStrategy
+    URLPaginationStrategy,
+    URLParameterPaginationStrategy
 };
