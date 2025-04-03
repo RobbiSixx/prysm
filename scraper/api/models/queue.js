@@ -90,8 +90,44 @@ async function processJob(jobId) {
   try {
     console.log(`🚀 Processing job ${jobId}: ${job.url}`);
     
+    // Convert boolean flags to proper options format if needed
+    const options = { ...job.options || {} };
+    
+    // Handle Smart Scan options conversion
+    if (options.analyze) {
+      options.analyzeOnly = true;
+    }
+    
+    if (options.skipAnalysis) {
+      options.skipAnalysis = true;
+    }
+    
+    // Handle speed profile flags
+    if (options.focused || options.standard || options.deep) {
+      // Convert to profile - only one should be true
+      if (options.focused) {
+        options.profile = 'speed';
+      } else if (options.deep) {
+        options.profile = 'thorough';
+      } else if (options.standard) {
+        options.profile = 'balanced';
+      }
+    }
+    
+    // Handle content type profile flags
+    if (options.article || options.product || options.listing) {
+      // Convert to profile - only one should be true
+      if (options.article) {
+        options.profile = 'article';
+      } else if (options.product) {
+        options.profile = 'product';
+      } else if (options.listing) {
+        options.profile = 'listing';
+      }
+    }
+    
     // Execute the scraper
-    const results = await mainScraper(job.url, job.options || {});
+    const results = await mainScraper(job.url, options);
     
     // Update job status to completed
     jobModel.updateJob(jobId, {
@@ -158,9 +194,16 @@ async function sendWebhook(job, results, error = null) {
   if (results) {
     payload.resultSummary = {
       title: results.title,
-      contentLength: results.content.length,
+      contentLength: results.content ? results.content.length : 0,
       structureType: results.structureType,
-      paginationType: results.paginationType
+      paginationType: results.paginationType,
+      // Add Smart Scan information
+      contentType: results.contentType || results.analysisResult?.contentType,
+      smartScan: {
+        profileUsed: job.options?.profile || 'default',
+        optimizedStrategy: results.optimizedStrategy || results.recommendedStrategy,
+        analysisPerformed: !job.options?.skipAnalysis
+      }
     };
   }
   

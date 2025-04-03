@@ -32,7 +32,11 @@ async function scrapeWebsite() {
       maxScrolls: 5,
       bypassCloudflare: true,
       handlePagination: true,
-      headless: true
+      headless: true,
+      // Smart Scan options
+      skipAnalysis: false, // Enable Smart Scan (default)
+      focused: false, // Use standard mode (default)
+      article: false // Use auto-detection (default)
     });
 
     console.log(`Title: ${result.title}`);
@@ -41,6 +45,44 @@ async function scrapeWebsite() {
 
     // Process the scraped data
     // ...
+
+    return result;
+  } catch (error) {
+    console.error('Scraping error:', error);
+  }
+}
+
+scrapeWebsite();
+```
+
+### 1a. NPM Package
+
+You can also install Prysm directly from npm:
+
+```bash
+npm install @pinkpixel/prysm
+```
+
+Then import and use it in your code:
+
+```javascript
+const { scrape } = require('@pinkpixel/prysm');
+
+async function scrapeWebsite() {
+  try {
+    const result = await scrape('https://example.com', {
+      maxScrolls: 5,
+      bypassCloudflare: true,
+      handlePagination: true,
+      // Smart Scan options
+      skipAnalysis: false, // Enable Smart Scan (default)
+      focused: true, // Speed-optimized mode
+      article: true // Force article mode
+    });
+
+    console.log(`Title: ${result.title}`);
+    console.log(`Content items: ${result.content.length}`);
+    console.log(`Structure type: ${result.structureType}`);
 
     return result;
   } catch (error) {
@@ -70,6 +112,15 @@ function scrapeUrl(url, options = {}) {
     if (options.maxScrolls) cmd += ` --maxScrolls ${options.maxScrolls}`;
     if (options.noHeadless) cmd += ` --noHeadless`;
     if (options.output) cmd += ` --output "${options.output}"`;
+    
+    // Smart Scan options
+    if (options.skipAnalysis) cmd += ` --skipAnalysis`;
+    if (options.analyze) cmd += ` --analyze`;
+    if (options.focused) cmd += ` --focused`;
+    if (options.deep) cmd += ` --deep`;
+    if (options.article) cmd += ` --article`;
+    if (options.product) cmd += ` --product`;
+    if (options.listing) cmd += ` --listing`;
 
     // Execute the command
     exec(cmd, (error, stdout, stderr) => {
@@ -94,7 +145,11 @@ function scrapeUrl(url, options = {}) {
 }
 
 // Usage
-scrapeUrl('https://example.com', { maxScrolls: 10 })
+scrapeUrl('https://example.com', { 
+  maxScrolls: 10,
+  focused: true,  // Speed-optimized mode
+  article: true   // Force article extraction
+})
   .then(results => console.log(results))
   .catch(err => console.error(err));
 ```
@@ -202,7 +257,11 @@ async function scrapeWithAPI() {
 
     const job = await prysm.createJob('https://example.com', {
       maxScrolls: 5,
-      bypassCloudflare: true
+      bypassCloudflare: true,
+      // Smart Scan options
+      skipAnalysis: false,  // Use Smart Scan (default)
+      focused: true,        // Speed-optimized mode
+      product: true         // Force product page extraction
     });
 
     console.log(`Job created: ${job.jobId}`);

@@ -44,7 +44,15 @@ Request body:
     "bypassCloudflare": true,
     "handlePagination": true,
     "paginationStrategy": "infinite",
-    "headless": true
+    "headless": true,
+    "analyze": false,
+    "skipAnalysis": false,
+    "focused": false,
+    "standard": true,
+    "deep": false,
+    "article": false,
+    "product": false,
+    "listing": false
   },
   "priority": 5,
   "webhook": "https://your-webhook-url.com/callback"
@@ -61,6 +69,15 @@ Request body:
   - `handlePagination`: Whether to automatically handle pagination (default: true)
   - `paginationStrategy`: Force a specific pagination strategy (infinite/click/url)
   - `headless`: Whether to run Puppeteer in headless mode (default: true)
+  - **Smart Scan Options:**
+    - `analyze`: Run analysis only without scraping (analyze-only mode)
+    - `skipAnalysis`: Disable Smart Scan analysis (analysis is enabled by default)
+    - `focused`: Optimize for speed with fewer scrolls (default: false)
+    - `standard`: Use balanced approach (default: true)
+    - `deep`: Maximum extraction, slower but thorough (default: false)
+    - `article`: Optimize for articles and blog posts (default: false)
+    - `product`: Optimize for product pages (default: false)
+    - `listing`: Optimize for product listings (default: false)
 - `priority`: Job priority (1 = highest, 10 = lowest, default: 5)
 - `webhook`: URL to receive notifications when job completes (optional)
 
