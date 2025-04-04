@@ -57,6 +57,9 @@ class MainExtractor {
     this.priorityExtractors = [];
     this.skipExtractors = [];
     
+    // Track the successful extractor to optimize subsequent extraction after pagination
+    this.successfulExtractor = null;
+    
     // Add compatibility for different Puppeteer versions
     this.ensureCompatibility();
   }
@@ -174,19 +177,12 @@ class MainExtractor {
         this.data.title = await this.extractTitle();
       }
       
-      // Sort extractors by priority if provided
-      const sortedExtractors = this._getSortedExtractors();
-      
-      // Try each extractor until we get sufficient content
-      for (const extractorName of sortedExtractors) {
-        if (this._isExtractionSufficient(this.data.content)) {
-          // We already have good content, skip remaining extractors
-          break;
-        }
-        
+      // If we already have a successful extractor from previous extraction,
+      // only use that one to avoid redundant processing
+      if (this.successfulExtractor) {
         try {
           let extractedContent = [];
-          switch (extractorName) {
+          switch (this.successfulExtractor) {
             case 'recipes':
               extractedContent = await this.extractFromRecipes();
               break;
@@ -243,17 +239,97 @@ class MainExtractor {
             });
             
             this.data.content.push(...uniqueContent);
-            
-            // Check if we now have sufficient content
-            if (this._isExtractionSufficient(this.data.content)) {
-              // Set a flag to indicate we found an optimal method
-              this.foundOptimalMethod = true;
-              this.optimalMethod = extractorName;
-              break;
-            }
           }
         } catch (error) {
-          // Continue to next extractor if one fails
+          // If the successful extractor fails, fall back to trying all extractors
+          this.successfulExtractor = null;
+        }
+      }
+      
+      // If no successful extractor yet, or if it failed, try all extractors
+      if (!this.successfulExtractor) {
+        // Sort extractors by priority if provided
+        const sortedExtractors = this._getSortedExtractors();
+        
+        // Try each extractor until we get sufficient content
+        for (const extractorName of sortedExtractors) {
+          if (this._isExtractionSufficient(this.data.content)) {
+            // We already have good content, skip remaining extractors
+            break;
+          }
+          
+          try {
+            let extractedContent = [];
+            switch (extractorName) {
+              case 'recipes':
+                extractedContent = await this.extractFromRecipes();
+                break;
+              case 'article':
+                extractedContent = await this.extractFromArticle();
+                break;
+              case 'mainContent':
+                extractedContent = await this.extractFromMainContent();
+                break;
+              case 'semantic':
+                extractedContent = await this.extractFromSemantic();
+                break;
+              case 'headerContentFooter':
+                extractedContent = await this.extractFromHeaderContentFooter();
+                break;
+              case 'multiColumn':
+                extractedContent = await this.extractFromMultiColumn();
+                break;
+              case 'contentSections':
+                extractedContent = await this.extractFromContentSections();
+                break;
+              case 'singleColumn':
+                extractedContent = await this.extractFromSingleColumn();
+                break;
+              case 'largestContent':
+                extractedContent = await this.extractFromLargest();
+                break;
+              case 'product':
+                extractedContent = await this.extractFromProduct();
+                break;
+              case 'documentation':
+                extractedContent = await this.extractFromDocumentation();
+                break;
+              case 'basic':
+                extractedContent = await this.extractFromBasic();
+                break;
+              case 'textDensity':
+                extractedContent = await this.extractFromTextDensity();
+                break;
+            }
+            
+            if (extractedContent && extractedContent.length > 0) {
+              newContent.push(...extractedContent);
+              
+              // Add to this.data.content immediately to check if it's sufficient
+              const uniqueContent = extractedContent.filter(item => {
+                if (!item) return false;
+                const text = typeof item === 'string' ? item : item.text;
+                if (!text) return false;
+                return !this.data.content.some(existing => {
+                  const existingText = typeof existing === 'string' ? existing : existing.text;
+                  return existingText === text;
+                });
+              });
+              
+              this.data.content.push(...uniqueContent);
+              
+              // Check if we now have sufficient content
+              if (this._isExtractionSufficient(this.data.content)) {
+                // Set a flag to indicate we found an optimal method
+                this.foundOptimalMethod = true;
+                this.optimalMethod = extractorName;
+                this.successfulExtractor = extractorName; // Store the successful extractor for future use
+                break;
+              }
+            }
+          } catch (error) {
+            // Continue to next extractor if one fails
+          }
         }
       }
       
