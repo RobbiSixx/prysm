@@ -10,90 +10,44 @@ const http = require('http');
 const { URL } = require('url');
 
 /**
- * Extract images from the page
+ * Extract images from the page without any filtering
  * @param {import('puppeteer').Page} page - Puppeteer page instance
  * @param {Object} options - Image extraction options
  * @returns {Promise<Array>} Array of image objects
  */
 async function extractImages(page, options = {}) {
-  const {
-    maxImages = 100,
-    minImageSize = 100,
-    excludeIcons = true,
-    excludeTracking = true,
-  } = options;
+  const { maxImages = 0 } = options; // 0 means no limit
 
   try {
-    return await page.evaluate(
-      (maxImg, minSize, excludeIcn, excludeTrk) => {
-        // Helper to check if a URL is likely a tracking pixel
-        const isTrackingPixel = (url) => {
-          const trackingPatterns = ['pixel', 'tracker', 'tracking', 'analytics', 'beacon', '1x1'];
-          return trackingPatterns.some(pattern => url.toLowerCase().includes(pattern));
+    return await page.evaluate((maxImg) => {
+      // Helper to generate an absolute URL
+      const toAbsoluteUrl = (relativeUrl) => {
+        try {
+          return new URL(relativeUrl, window.location.href).href;
+        } catch (e) {
+          return relativeUrl;
+        }
+      };
+
+      // Get ALL images without any filtering
+      let imgElements = Array.from(document.querySelectorAll('img'));
+      
+      // Only limit the number if maxImages > 0
+      if (maxImg > 0) {
+        imgElements = imgElements.slice(0, maxImg);
+      }
+
+      // Extract image data from all images without filtering
+      return imgElements.map(img => {
+        return {
+          url: toAbsoluteUrl(img.src || img.dataset.src || ''),
+          alt: img.alt || '',
+          title: img.title || '',
+          width: img.width || 0,
+          height: img.height || 0
         };
-
-        // Helper to generate an absolute URL
-        const toAbsoluteUrl = (relativeUrl) => {
-          try {
-            return new URL(relativeUrl, window.location.href).href;
-          } catch (e) {
-            return relativeUrl;
-          }
-        };
-
-        // Extract all img elements with their attributes
-        const imgElements = Array.from(document.querySelectorAll('img'))
-          .filter(img => {
-            // Skip images without src
-            if (!img.src) return false;
-            
-            // Skip tiny images (likely icons or tracking pixels)
-            if (excludeIcn && (img.width < minSize || img.height < minSize)) return false;
-            
-            // Skip tracking pixels
-            if (excludeTrk && isTrackingPixel(img.src)) return false;
-            
-            return true;
-          })
-          .slice(0, maxImg);
-
-        // Extract image data
-        return imgElements.map(img => {
-          // Find closest caption if available
-          const closestFigure = img.closest('figure');
-          const captionElement = closestFigure ? 
-            closestFigure.querySelector('figcaption') : null;
-          
-          // Get parent container for context
-          const article = img.closest('article');
-          const section = img.closest('section');
-          const container = img.closest('[class*="content"], [class*="article"], [id*="content"], [id*="article"]');
-          
-          // Determine context
-          let context = 'unknown';
-          if (article) context = 'article';
-          else if (section) context = section.id || section.className || 'section';
-          else if (container) context = container.id || container.className || 'content';
-          
-          // Build image object
-          return {
-            url: toAbsoluteUrl(img.src),
-            alt: img.alt || '',
-            title: img.title || '',
-            width: img.width || 0,
-            height: img.height || 0,
-            caption: captionElement ? captionElement.textContent.trim() : '',
-            context: context.trim().replace(/\s+/g, ' ').substring(0, 100),
-            naturalWidth: img.naturalWidth || 0,
-            naturalHeight: img.naturalHeight || 0
-          };
-        });
-      },
-      maxImages,
-      minImageSize,
-      excludeIcons,
-      excludeTracking
-    );
+      }).filter(img => img.url); // Only filter out images without URLs
+    }, maxImages);
   } catch (error) {
     console.warn(`Error extracting images: ${error.message}`);
     return [];

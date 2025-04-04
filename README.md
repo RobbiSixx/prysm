@@ -46,84 +46,31 @@ npm run start:api
 The CLI provides a simple interface to run the scraper. Prysm automatically detects page structure and adapts its scraping strategy accordingly:
 
 ```bash
-# Scrape any URL
-npm run start:cli "https://example.com" \
-  --maxScrolls 10 \
-  --scrollDelay 2000
+# Scrape any URL using the npm package
+npm run scrape -- "https://example.com"
 
-# Scrape multiple pages by following links (defaults to same domain)
-npm run start:cli "https://example.com" --pages 5
+# Use as a global command if installed with -g
+npx prysm-scrape "https://example.com"
 
-# Scrape images from a page
-npm run start:cli "https://example.com" --scrapeImages
+# Follow links within a page (great for documentation or multi-page content)
+npm run scrape -- "https://example.com" --pages 5
 
-# Scrape and download images
-npm run start:cli "https://example.com" --downloadImages --maxImages 50 --minImageSize 200
+# Download images from the page
+npm run scrape -- "https://example.com" --images
+
+# Custom output paths
+npm run scrape -- "https://example.com" --output "/custom/path" --image-output "/custom/images"
 ```
 
 ### CLI Options
 
-- `--pages <number>` - Maximum number of pages to scrape (default: 1)
-- `--allDomains` - Follow links to any domain (default: same domain only)
-- `--maxScrolls <number>` - Maximum scroll attempts (default: 100)
-- `--scrollDelay <ms>` - Delay between scrolls in ms (default: 1000)
-- `--headless` - Run in headless mode (default: true)
-- `--noHeadless` - Run with browser visible
-- `--output <path>` - Custom output path for results
-- `--scrapeImages` - Enable image scraping (default: false)
-- `--downloadImages` - Download images locally (enables scrapeImages)
-- `--maxImages <number>` - Maximum images to extract per page (default: 100)
-- `--minImageSize <pixels>` - Minimum width/height for images (default: 100)
+- `--pages <number>` - Number of links to follow from the initial URL (default: 1)
+- `--images` - Download images from the page
+- `--output <path>` - Custom output path for results (default: ~/prysm/output)
+- `--image-output <path>` - Custom output path for images (default: ~/prysm/output/images)
+- `--help` - Show help message
 
-#### Smart Scan Options
-
-- `--analyze` - Run analysis only without scraping
-- `--no-analyze` - Disable Smart Scan (enabled by default)
-- `--focused` - Optimize for speed (fewer scrolls, main content only)
-- `--standard` - Balanced approach (default)
-- `--deep` - Maximum extraction (slower)
-- `--article` - Optimize for articles and blog posts
-- `--product` - Optimize for product pages
-- `--listing` - Optimize for product listings and search results
-
-### 🧠 Smart Scan
-
-Prysm includes an intelligent analysis system that examines page structure before scraping to optimize the extraction process:
-
-```bash
-# Analyze a site structure without scraping
-npm run start:cli "https://example.com" --analyze
-
-# Speed optimization options (choose one)
-npm run start:cli "https://example.com" --focused      # Fastest extraction, focuses on main content
-npm run start:cli "https://example.com" --standard    # Balanced approach (default)
-npm run start:cli "https://example.com" --deep      # Maximum content extraction (slower)
-
-# Content type optimization options (choose one)
-npm run start:cli "https://example.com" --article   # Optimized for blog posts and articles
-npm run start:cli "https://example.com" --product   # Optimized for e-commerce product pages
-npm run start:cli "https://example.com" --listing   # Optimized for product listings and search results
-
-# Skip the Smart Scan analysis
-npm run start:cli "https://example.com" --no-analyze
-```
-
-Smart Scan automatically identifies:
-- Content type (article, product, listing, etc.)
-- Page structure and elements
-- Pagination type and selectors
-- Infinite scroll behavior
-
-Based on this analysis, Prysm dynamically selects the optimal extraction strategy for maximum efficiency.
-
-Prysm will automatically:
-
-- Detect page structure (article, recipe, product listing, etc.)
-- Choose the best extraction strategy
-- Handle pagination if present
-- Bypass anti-bot protections when needed
-- Block unnecessary resources for faster scraping
-- Follow links to additional pages when --pages > 1
+> **Note**: When using npm run scrape, you must include `--` before your arguments to pass them to the script.
 
 ## 🌐 REST API
 

@@ -3,13 +3,16 @@
   "version": "1.4.0",
   "description": "Structure-aware web scraping tool with REST API support",
   "main": "main_scraper.js",
+  "bin": {
+    "prysm-scrape": "./bin/cli.js"
+  },
   "scripts": {
     "test": "jest",
     "test:local": "jest tests/local.test.js",
     "start:mock": "node tests/mockServer/server.js",
     "start:api": "node api/server.js",
     "start:cli": "node main_scraper.js",
-    "scrape": "node main_scraper.js"
+    "scrape": "node ./bin/cli.js"
   },
   "dependencies": {
     "chalk": "^4.1.2",
