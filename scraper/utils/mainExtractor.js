@@ -761,7 +761,7 @@ class MainExtractor {
           }
           
           // Add ingredients heading
-          content.push('Ingredients');
+          // content.push('Ingredients');  // Removing label
           
           // Add ingredients
           if (Array.isArray(recipeStructuredData.recipeIngredient)) {
@@ -771,7 +771,7 @@ class MainExtractor {
           }
           
           // Add instructions heading
-          content.push('Instructions');
+          // content.push('Instructions');  // Removing label
           
           // Add instructions
           if (Array.isArray(recipeStructuredData.recipeInstructions)) {
@@ -806,7 +806,7 @@ class MainExtractor {
           }
           
           if (recipeMetadata.length > 0) {
-            content.push('Recipe Information');
+            // content.push('Recipe Information');  // Removing label
             recipeMetadata.forEach(item => content.push(item));
           }
           
@@ -1009,7 +1009,7 @@ class MainExtractor {
         
         // If we have ingredients, add them
         if (ingredients.length > 0) {
-          content.push('Ingredients');
+          // content.push('Ingredients');  // Removing label
           ingredients.forEach(ingredient => {
             content.push(ingredient);
           });
@@ -1017,7 +1017,7 @@ class MainExtractor {
         
         // If we have instructions, add them
         if (instructions.length > 0) {
-          content.push('Instructions');
+          // content.push('Instructions');  // Removing label
           instructions.forEach((instruction, index) => {
             // Add numbering if not already numbered
             if (!instruction.match(/^\d+[\.\)]/)) {
