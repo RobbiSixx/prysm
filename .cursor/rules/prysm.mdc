@@ -4,7 +4,7 @@ globs:
 alwaysApply: true
 ---
 
-VERY IMPORTANT!!!!! MAKE ABSOLUTELY SURE THAT EVERY SINGLE METHOD OF EVERY THING WE USE IS USED ON EVERY PAGE WE SCRAPE ALL THE TIME NO EXCEPTIONS NO THRESHHOLDS NO FILTERING NO ATTEMPTS AT DETECTION NO SITE OR STRUCTURE SPECIFIC ANYTHING. WE THROW EVERYTHING WE HAVE AT EVERY SITE - OK?
+VERY IMPORTANT!!!!! MAKE ABSOLUTELY SURE THAT EVERY SINGLE METHOD OF EVERY THING WE USE IS USED ON EVERY PAGE WE SCRAPE ALL THE TIME NO EXCEPTIONS NO THRESHHOLDS NO FILTERING NO ATTEMPTS AT DETECTION NO SITE OR STRUCTURE SPECIFIC ANYTHING. WE THROW EVERYTHING WE HAVE AT EVERY SITE - THE APP USES INTELLIGENT METHODS SUCH AS ANALYSIS AND EXTRACTION METHOD DETECTION SO I DO NOT NEED ANY OF THE SCRAPING LOGIC ITSELF CHANGED AT ALL.
 
 DO NOT EVER ADD MORE LOGGING EVER NO EXCEPTIONS!!!!! SEE BELOW - THIS IS THE ONLY OUTPUT I WANT EVER!!!!!!
 
@@ -35,3 +35,39 @@ MY OUTPUT:
 
 💾 Results saved to:
 /home/sizzlebop/Desktop/projects/prysm/scraper/results/www_cigarscanner_com_tabs_social_users_ebff7911_0b_2025-04-03T01-29-05-191Z.json
+
+## 🧩 How Prysm Works
+
+Prysm's intelligent scraping process works in four key stages:
+
+### 1. Site Analysis Phase
+When Prysm encounters a new webpage, it first analyzes the structure and content to understand what it's looking at. This analysis includes detecting:
+- Page structure and layout (elements, content organization, DOM patterns)
+- Content type (article, product listing, documentation, recipe, etc.)
+- Available pagination methods (infinite scroll, click-based, URL-based)
+- Media content (images, videos) and their context
+
+### 2. Smart Extraction Strategy
+Based on the analysis, Prysm creates an optimized extraction plan:
+- Prioritizes the most promising extraction methods for the detected content type
+- Determines the best pagination approach (scroll, click next buttons, follow URL patterns)
+- Adjusts scroll settings and timeouts based on page complexity
+- Prepares specialized extractors for specific content (recipes, products, articles)
+
+### 3. Comprehensive Extraction Testing
+Prysm then systematically tests different extraction methods:
+- Tries all applicable extraction techniques to find the most effective one
+- Evaluates each method's results based on content quality and completeness
+- Identifies the single most successful approach for this specific page type
+- Maintains a "brute force" philosophy - trying everything to get the best results
+
+### 4. Optimized Extraction Pipeline
+For maximum efficiency, Prysm learns and adapts:
+- After finding the most effective extraction method, it uses only that method for subsequent pages
+- This dramatically speeds up multi-page scraping jobs by avoiding redundant testing
+- If the chosen method fails on a different page, Prysm automatically falls back to testing all methods again
+- The extraction continuously adapts to changing page structures across a website
+
+This intelligent approach allows Prysm to handle virtually any website structure while optimizing for both speed and content quality.
+
+---

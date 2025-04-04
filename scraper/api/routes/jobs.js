@@ -13,10 +13,60 @@ const queueManager = require('../models/queue');
  */
 router.post('/', async (req, res, next) => {
   try {
-    const { url, options, priority, webhook } = req.body;
+    const { url, options = {}, priority, webhook } = req.body;
     
-    // Create new job
-    const job = await jobModel.createJob(url, options, priority, webhook);
+    // Validate URL
+    if (!url || typeof url !== 'string' || !url.startsWith('http')) {
+      return res.status(400).json({
+        message: 'Invalid URL. Must be a string starting with http:// or https://',
+        code: 'INVALID_URL'
+      });
+    }
+
+    // Validate and extract only supported options
+    const validatedOptions = {};
+    
+    // Pages (integer)
+    if ('pages' in options) {
+      const pages = parseInt(options.pages, 10);
+      if (isNaN(pages) || pages < 1) {
+        return res.status(400).json({
+          message: 'Invalid pages value. Must be a positive integer.',
+          code: 'INVALID_OPTION'
+        });
+      }
+      validatedOptions.pages = pages;
+    }
+    
+    // Images (boolean)
+    if ('images' in options) {
+      validatedOptions.images = !!options.images;
+    }
+    
+    // Output path (string)
+    if ('output' in options && options.output) {
+      if (typeof options.output !== 'string') {
+        return res.status(400).json({
+          message: 'Invalid output path. Must be a string.',
+          code: 'INVALID_OPTION'
+        });
+      }
+      validatedOptions.output = options.output;
+    }
+    
+    // Image output path (string)
+    if ('imageOutput' in options && options.imageOutput) {
+      if (typeof options.imageOutput !== 'string') {
+        return res.status(400).json({
+          message: 'Invalid imageOutput path. Must be a string.',
+          code: 'INVALID_OPTION'
+        });
+      }
+      validatedOptions.imageOutput = options.imageOutput;
+    }
+    
+    // Create new job with validated options
+    const job = await jobModel.createJob(url, validatedOptions, priority, webhook);
     
     // Add job to processing queue
     queueManager.addJob(job.jobId);

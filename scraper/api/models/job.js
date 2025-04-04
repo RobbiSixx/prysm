@@ -48,24 +48,40 @@ async function createJob(url, options = {}, priority = 5, webhook = null) {
   const jobId = generateJobId();
   const now = new Date();
   
-  // Use the global default options 
+  // Default output paths
   const defaultOptions = {
-    ...DEFAULT_OPTIONS,
-    output: path.join(__dirname, '../../results')  // Override with API-specific path
+    pages: 1,
+    images: false,
+    output: path.join(__dirname, '../../results'),  // Override with API-specific path
+    imageOutput: path.join(__dirname, '../../results/images')
   };
   
   // Merge with provided options
   const mergedOptions = { ...defaultOptions, ...options };
   
-  // If pages > 1, automatically enable followLinks
-  if (mergedOptions.pages > 1 && !('followLinks' in options)) {
-    mergedOptions.followLinks = true;
+  // Handle legacy compatibility with main scraper
+  // Convert options to match what the main scraper expects
+  const scrapingOptions = {
+    ...DEFAULT_OPTIONS,
+    pages: mergedOptions.pages,
+    images: mergedOptions.images,
+    // These are required for backward compatibility
+    scrapeImages: mergedOptions.images,
+    downloadImages: mergedOptions.images,
+    output: mergedOptions.output,
+    imageOutput: mergedOptions.imageOutput,
+    imageOutputDir: mergedOptions.imageOutput // For backward compatibility
+  };
+  
+  // If pages > 1, automatically enable followLinks (for backward compatibility)
+  if (mergedOptions.pages > 1) {
+    scrapingOptions.followLinks = true;
   }
   
   const job = {
     jobId,
     url,
-    options: mergedOptions,
+    options: scrapingOptions,
     priority,
     webhook,
     status: JobStatus.PENDING,

@@ -22,6 +22,42 @@ Prysm is a blazing-smart Puppeteer-based web scraper that doesn't just extract �
 
 ---
 
+## 🧩 How Prysm Works
+
+Prysm's intelligent scraping process works in four key stages:
+
+### 1. Site Analysis Phase
+When Prysm encounters a new webpage, it first analyzes the structure and content to understand what it's looking at. This analysis includes detecting:
+- Page structure and layout (elements, content organization, DOM patterns)
+- Content type (article, product listing, documentation, recipe, etc.)
+- Available pagination methods (infinite scroll, click-based, URL-based)
+- Media content (images, videos) and their context
+
+### 2. Smart Extraction Strategy
+Based on the analysis, Prysm creates an optimized extraction plan:
+- Prioritizes the most promising extraction methods for the detected content type
+- Determines the best pagination approach (scroll, click next buttons, follow URL patterns)
+- Adjusts scroll settings and timeouts based on page complexity
+- Prepares specialized extractors for specific content (recipes, products, articles)
+
+### 3. Comprehensive Extraction Testing
+Prysm then systematically tests different extraction methods:
+- Tries all applicable extraction techniques to find the most effective one
+- Evaluates each method's results based on content quality and completeness
+- Identifies the single most successful approach for this specific page type
+- Maintains a "brute force" philosophy - trying everything to get the best results
+
+### 4. Optimized Extraction Pipeline
+For maximum efficiency, Prysm learns and adapts:
+- After finding the most effective extraction method, it uses only that method for subsequent pages
+- This dramatically speeds up multi-page scraping jobs by avoiding redundant testing
+- If the chosen method fails on a different page, Prysm automatically falls back to testing all methods again
+- The extraction continuously adapts to changing page structures across a website
+
+This intelligent approach allows Prysm to handle virtually any website structure while optimizing for both speed and content quality.
+
+---
+
 ## 🚀 Quick Start
 
 ```bash
@@ -93,11 +129,10 @@ POST http://localhost:3001/api/jobs
 {
   "url": "https://example.com/page-to-scrape",
   "options": {
-    "maxScrolls": 100,              # Optional: scroll attempts
-    "scrollDelay": 1000,            # Optional: delay between scrolls (ms)
-    "bypassCloudflare": true,       # Optional: bypass Cloudflare
-    "handlePagination": true,       # Optional: auto-handle pagination
-    "paginationStrategy": "infinite" # Optional: force pagination strategy
+    "pages": 5,                    # Optional: number of pages to scrape (default: 1)
+    "images": true,                # Optional: download images (default: false)
+    "output": "/custom/path",      # Optional: custom output path
+    "imageOutput": "/custom/images" # Optional: custom image output path
   }
 }
 
@@ -109,6 +144,8 @@ POST http://localhost:3001/api/jobs
   "createdAt": "2024-03-20T10:30:00Z"
 }
 ```
+
+> **Note**: The API options have been simplified to match the CLI options for consistency.
 
 #### 2. Check Job Status
 

@@ -92,8 +92,21 @@ if (require.main === module) {
   findAvailablePort(BASE_PORT)
     .then(port => {
       app.listen(port, () => {
+        console.log(`
+   ██████╗ ██████╗ ██╗   ██╗███████╗███╗   ███╗
+   ██╔══██╗██╔══██╗╚██╗ ██╔╝██╔════╝████╗ ████║
+   ██████╔╝██████╔╝ ╚████╔╝ ███████╗██╔████╔██║
+   ██╔═══╝ ██╔══██╗  ╚██╔╝  ╚════██║██║╚██╔╝██║
+   ██║     ██║  ██║   ██║   ███████║██║ ╚═╝ ██║
+   ╚═╝     ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝     ╚═╝
+        `);
         console.log(`✨ Prysm API running at http://localhost:${port}`);
         console.log(`📚 API Documentation available at http://localhost:${port}/api-docs`);
+        console.log(`\n📋 Supported API options:`);
+        console.log(`  • pages - Number of pages to scrape`);
+        console.log(`  • images - Whether to download images`);
+        console.log(`  • output - Custom output path for results`);
+        console.log(`  • imageOutput - Custom output path for images`);
       });
     })
     .catch(err => {
